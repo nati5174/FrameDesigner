@@ -55,8 +55,10 @@ pip install -e ".[dev]"
 Then:
 
 ```
-pytest                      # tests (1 smoke test currently)
+pytest                      # tests (33 passing)
 ruff check . && mypy src    # lint and types
+python -m framegen --width 1500 --depth 700 --height 900             # cut list, no shelf
+python -m framegen --width 1500 --depth 700 --height 900 --shelf 300 # cut list, with shelf
 ```
 
 Not yet working (modules not implemented):

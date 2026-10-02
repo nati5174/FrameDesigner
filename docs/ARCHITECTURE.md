@@ -1,6 +1,7 @@
 # Architecture
 
-Status: planned. No code exists yet. Update this file as modules are built.
+Status: first slice complete (catalog, spec, table generator, cut list, CLI).
+Update this file as modules are built.
 
 ## Pipeline
 
@@ -34,17 +35,17 @@ The LLM is used in exactly one place: text to `FrameSpec`. Everything else is pl
 
 ## Modules
 
-| Module | Responsibility | Depends on |
-|---|---|---|
-| `catalog/` | Load raw parts data, validate it, write a versioned catalog file | nothing |
-| `spec.py` | `FrameSpec` model and validation rules | nothing |
-| `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog |
-| `checks/` | Collision, connectivity, load estimate | catalog |
-| `outputs/` | Cut list and BOM | catalog |
-| `parser/` | Text to `FrameSpec`; LLM call with validation retry, rule-based fallback | spec |
-| `api.py` | One endpoint: text or spec in, full result out | all of the above |
-| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks |
-| `web/` | Prompt box, Three.js viewer, tables | api |
+| Module | Responsibility | Depends on | Status |
+|---|---|---|---|
+| `catalog/` | Load raw parts data, validate it, write a versioned catalog file | nothing | done (v1, one profile) |
+| `spec.py` | `FrameSpec` model and validation rules | nothing | done |
+| `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table) |
+| `checks/` | Collision, connectivity, load estimate | catalog | not started |
+| `outputs/` | Cut list and BOM | catalog | cut list done; BOM not started |
+| `parser/` | Text to `FrameSpec`; LLM call with validation retry, rule-based fallback | spec | not started |
+| `api.py` | One endpoint: text or spec in, full result out | all of the above | not started |
+| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | not started |
+| `web/` | Prompt box, Three.js viewer, tables | api | not started |
 
 Dependencies point one way. `generate`, `checks`, and `outputs` must not import `parser`, so the core runs and tests without an API key.
 

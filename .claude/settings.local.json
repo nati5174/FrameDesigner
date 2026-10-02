@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(pytest:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(ruff check:*)",
+      "Bash(python:*)"
+    ]
+  }
+}

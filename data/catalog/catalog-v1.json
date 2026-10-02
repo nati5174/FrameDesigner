@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "profiles": {
+    "40-series": {
+      "part_number": "40-4040",
+      "series": "40-series",
+      "profile_width_mm": 40,
+      "price_per_metre": null,
+      "mass_per_metre_kg": null,
+      "source": "80/20",
+      "source_url": "https://8020.net/40-4040.html"
+    }
+  }
+}
