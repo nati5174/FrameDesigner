@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Frame Designer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display: flex; height: 100vh; font-family: sans-serif; font-size: 14px; background: #1a1a1a; color: #ddd; }
+    #canvas-wrap { flex: 1; }
+    #panel { width: 300px; flex-shrink: 0; padding: 16px; overflow-y: auto; background: #222; border-left: 1px solid #333; display: flex; flex-direction: column; gap: 12px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; }
+    label { display: block; margin-bottom: 2px; color: #aaa; font-size: 12px; }
+    input[type=number], input[type=text] { width: 100%; padding: 5px 8px; background: #2c2c2c; border: 1px solid #444; color: #ddd; border-radius: 3px; }
+    button { width: 100%; padding: 8px; background: #3a6fa8; border: none; color: #fff; border-radius: 3px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #4a7fb8; }
+    #error { color: #f87171; font-size: 12px; display: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; color: #888; border-bottom: 1px solid #333; padding: 4px 2px; }
+    td { padding: 4px 2px; border-bottom: 1px solid #2a2a2a; }
+    tfoot td { border-top: 1px solid #444; font-weight: 600; }
+    #cut-list-section { display: none; }
+  </style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+<div id="panel">
+  <h1>Frame Designer</h1>
+  <form id="form">
+    <div>
+      <label>Width (mm)</label>
+      <input type="number" id="width" value="1500" min="1" required>
+    </div>
+    <div>
+      <label>Depth (mm)</label>
+      <input type="number" id="depth" value="700" min="1" required>
+    </div>
+    <div>
+      <label>Height (mm)</label>
+      <input type="number" id="height" value="900" min="1" required>
+    </div>
+    <div>
+      <label>Shelf height (mm, optional)</label>
+      <input type="number" id="shelf" placeholder="none" min="1">
+    </div>
+    <div>
+      <label>Profile series</label>
+      <input type="text" id="series" value="40-series">
+    </div>
+    <button type="submit">Generate</button>
+    <p id="error"></p>
+  </form>
+  <div id="cut-list-section">
+    <h1>Cut List</h1>
+    <table id="cut-table">
+      <thead><tr><th>Profile</th><th>Length</th><th>Qty</th><th>Total</th></tr></thead>
+      <tbody></tbody>
+      <tfoot><tr><td colspan="3">Total</td><td id="grand-total"></td></tr></tfoot>
+    </table>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene setup ──────────────────────────────────────────────────────────────
+const wrap = document.getElementById('canvas-wrap');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x1a1a1a);
+wrap.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 10000);
+camera.position.set(2000, 1500, 2000);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(1, 2, 1);
+scene.add(sun);
+
+function resize() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+// ── Coordinate conversion: our +Z up → Three.js +Y up ───────────────────────
+function toThree(x, y, z) {
+  return new THREE.Vector3(x, z, -y);
+}
+
+// ── Role colours ─────────────────────────────────────────────────────────────
+const ROLE_COLOR = {
+  leg:               0x888888,
+  top_rail_width:    0x4a7fa5,
+  top_rail_depth:    0x4a7fa5,
+  shelf_rail_width:  0xc8862a,
+  shelf_rail_depth:  0xc8862a,
+};
+
+// ── Render bars ───────────────────────────────────────────────────────────────
+// All bars are axis-aligned. We size each BoxGeometry directly from the
+// converted start/end so no rotation or lookAt is needed.
+let barGroup = new THREE.Group();
+scene.add(barGroup);
+
+function renderBars(bars) {
+  scene.remove(barGroup);
+  barGroup = new THREE.Group();
+  scene.add(barGroup);
+
+  for (const bar of bars) {
+    const s = toThree(...bar.start);
+    const e = toThree(...bar.end);
+    const P = bar.profile_width_mm;
+
+    const dx = Math.abs(e.x - s.x) || P;
+    const dy = Math.abs(e.y - s.y) || P;
+    const dz = Math.abs(e.z - s.z) || P;
+
+    const geo = new THREE.BoxGeometry(dx, dy, dz);
+    const mat = new THREE.MeshLambertMaterial({
+      color: ROLE_COLOR[bar.role] ?? 0x888888,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set((s.x + e.x) / 2, (s.y + e.y) / 2, (s.z + e.z) / 2);
+    barGroup.add(mesh);
+  }
+
+  // Reframe camera to fit the frame
+  const box = new THREE.Box3().setFromObject(barGroup);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3()).length();
+  controls.target.copy(center);
+  camera.position.copy(center).add(new THREE.Vector3(size, size * 0.8, size));
+  camera.near = size / 100;
+  camera.far = size * 10;
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
+// ── Cut list table ────────────────────────────────────────────────────────────
+function renderCutList(rows) {
+  const tbody = document.querySelector('#cut-table tbody');
+  tbody.innerHTML = '';
+  let grand = 0;
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.profile_id}</td><td>${row.length_mm}</td><td>${row.qty}</td><td>${row.total_mm}</td>`;
+    tbody.appendChild(tr);
+    grand += row.total_mm;
+  }
+  document.getElementById('grand-total').textContent = grand.toFixed(0) + ' mm';
+  document.getElementById('cut-list-section').style.display = '';
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+document.getElementById('form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const errorEl = document.getElementById('error');
+  errorEl.style.display = 'none';
+
+  const width  = document.getElementById('width').value;
+  const depth  = document.getElementById('depth').value;
+  const height = document.getElementById('height').value;
+  const shelf  = document.getElementById('shelf').value;
+  const series = document.getElementById('series').value;
+
+  const params = new URLSearchParams({ width, depth, height, series });
+  if (shelf) params.set('shelf', shelf);
+
+  let resp;
+  try {
+    resp = await fetch(`/frame?${params}`);
+  } catch (e) {
+    errorEl.textContent = 'Network error: ' + e.message;
+    errorEl.style.display = '';
+    return;
+  }
+
+  const data = await resp.json();
+  if (!resp.ok) {
+    errorEl.textContent = data.detail ?? 'Error';
+    errorEl.style.display = '';
+    return;
+  }
+
+  renderBars(data.bars);
+  renderCutList(data.cut_list);
+});
+
+// Auto-load on page open
+document.getElementById('form').dispatchEvent(new Event('submit'));
+</script>
+</body>
+</html>
