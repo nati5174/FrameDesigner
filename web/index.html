@@ -19,6 +19,17 @@
     td { padding: 4px 2px; border-bottom: 1px solid #2a2a2a; }
     tfoot td { border-top: 1px solid #444; font-weight: 600; }
     #cut-list-section { display: none; }
+    #checks-section { display: none; font-size: 12px; }
+    .check-pass { color: #4ade80; }
+    .check-fail { color: #f87171; }
+    .check-warn { color: #fbbf24; font-size: 11px; margin-top: 4px; }
+    .estimate-tag { font-size: 10px; font-weight: normal; color: #888; background: #333; border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
+    .spread-note { font-size: 11px; color: #888; margin: 4px 0; }
+    details { margin-top: 6px; }
+    summary { font-size: 11px; color: #666; cursor: pointer; }
+    summary:hover { color: #888; }
+    details ul { font-size: 11px; color: #666; padding-left: 14px; margin-top: 4px; line-height: 1.6; }
+    .check-line { margin: 3px 0; }
   </style>
 </head>
 <body>
@@ -46,9 +57,14 @@
       <label>Profile series</label>
       <input type="text" id="series" value="40-series">
     </div>
+    <div>
+      <label>Target load (kg)</label>
+      <input type="number" id="load_kg" value="100" min="1" required>
+    </div>
     <button type="submit">Generate</button>
     <p id="error"></p>
   </form>
+
   <div id="cut-list-section">
     <h1>Cut List</h1>
     <table id="cut-table">
@@ -56,6 +72,32 @@
       <tbody></tbody>
       <tfoot><tr><td colspan="3">Total</td><td id="grand-total"></td></tr></tfoot>
     </table>
+  </div>
+
+  <div id="checks-section">
+    <h1>Load Check <span class="estimate-tag">estimate</span></h1>
+    <p class="spread-note">Headline assumes load is spread evenly over the top.</p>
+    <p id="load-headline" class="check-line"></p>
+    <p id="load-conc-warning" class="check-warn" style="display:none"></p>
+    <p id="collision-line" class="check-line"></p>
+    <p id="connectivity-line" class="check-line"></p>
+    <details>
+      <summary>Not covered by this estimate ▸</summary>
+      <ul>
+        <li>Joint failure (T-nut pull-out, bracket shear, bolt torque)</li>
+        <li>Leg column buckling</li>
+        <li>Frame racking under lateral load</li>
+        <li>Tipping under off-centre load</li>
+        <li>Dynamic loads, vibration, fatigue</li>
+        <li>Shear stress and stress concentrations</li>
+        <li>Shelf load</li>
+        <li>Profile damage reducing cross-section</li>
+        <li>Combined vertical and lateral loading</li>
+        <li>Self-weight of bars and tabletop</li>
+        <li>Temperature effects</li>
+        <li>Uneven or soft floor mounts</li>
+      </ul>
+    </details>
   </div>
 </div>
 
@@ -121,8 +163,6 @@ const ROLE_COLOR = {
 };
 
 // ── Render bars ───────────────────────────────────────────────────────────────
-// All bars are axis-aligned. We size each BoxGeometry directly from the
-// converted start/end so no rotation or lookAt is needed.
 let barGroup = new THREE.Group();
 scene.add(barGroup);
 
@@ -149,7 +189,6 @@ function renderBars(bars) {
     barGroup.add(mesh);
   }
 
-  // Reframe camera to fit the frame
   const box = new THREE.Box3().setFromObject(barGroup);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3()).length();
@@ -173,7 +212,58 @@ function renderCutList(rows) {
     grand += row.total_mm;
   }
   document.getElementById('grand-total').textContent = grand.toFixed(0) + ' mm';
-  document.getElementById('cut-list-section').style.display = '';
+  document.getElementById('cut-list-section').style.display = 'block';
+}
+
+// ── Check report ──────────────────────────────────────────────────────────────
+function renderChecks(cr) {
+  const load = cr.load;
+  const headlineEl = document.getElementById('load-headline');
+  const warnEl = document.getElementById('load-conc-warning');
+
+  if (load.status === 'not_evaluated') {
+    headlineEl.className = 'check-line check-fail';
+    headlineEl.textContent = 'Not evaluated: ' + load.not_evaluated_reason;
+    warnEl.style.display = 'none';
+  } else {
+    const gov = load.governing_rail;
+    const dist = gov.distributed;
+    const passClass = load.passed ? 'check-pass' : 'check-fail';
+    const passWord = load.passed ? 'PASS' : 'FAIL';
+    headlineEl.className = 'check-line ' + passClass;
+    headlineEl.textContent =
+      `${passWord} — ${gov.role.replace(/_/g, ' ')} ${gov.span_mm} mm` +
+      ` | σ ${dist.bending_stress_mpa.toFixed(1)} / ${gov.allowable_stress_mpa.toFixed(1)} MPa` +
+      ` | δ ${dist.deflection_mm.toFixed(2)} / ${gov.deflection_limit_mm.toFixed(2)} mm`;
+
+    // Concentrated-load warning when that case fails
+    const conc = gov.concentrated;
+    if (!conc.passed) {
+      const parts = [];
+      if (!conc.stress_passed)
+        parts.push(`stress ${conc.bending_stress_mpa.toFixed(1)} MPa > limit ${gov.allowable_stress_mpa.toFixed(1)} MPa`);
+      if (!conc.deflection_passed)
+        parts.push(`deflection ${conc.deflection_mm.toFixed(2)} mm > limit ${gov.deflection_limit_mm.toFixed(2)} mm`);
+      warnEl.textContent = '⚠ Concentrated load at midspan: ' + parts.join(', ') + '.';
+      warnEl.style.display = '';
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+
+  const collEl = document.getElementById('collision-line');
+  collEl.className = 'check-line ' + (cr.collision.passed ? 'check-pass' : 'check-fail');
+  collEl.textContent = 'Collision: ' + (cr.collision.passed
+    ? 'OK'
+    : `FAIL — ${cr.collision.colliding_pairs.length} overlapping pair(s)`);
+
+  const connEl = document.getElementById('connectivity-line');
+  connEl.className = 'check-line ' + (cr.connectivity.passed ? 'check-pass' : 'check-fail');
+  connEl.textContent = 'Connectivity: ' + (cr.connectivity.passed
+    ? 'OK'
+    : `FAIL — ${cr.connectivity.disconnected_bar_indices.length} disconnected bar(s)`);
+
+  document.getElementById('checks-section').style.display = 'block';
 }
 
 // ── Form submit ───────────────────────────────────────────────────────────────
@@ -182,13 +272,14 @@ document.getElementById('form').addEventListener('submit', async (ev) => {
   const errorEl = document.getElementById('error');
   errorEl.style.display = 'none';
 
-  const width  = document.getElementById('width').value;
-  const depth  = document.getElementById('depth').value;
-  const height = document.getElementById('height').value;
-  const shelf  = document.getElementById('shelf').value;
-  const series = document.getElementById('series').value;
+  const width   = document.getElementById('width').value;
+  const depth   = document.getElementById('depth').value;
+  const height  = document.getElementById('height').value;
+  const shelf   = document.getElementById('shelf').value;
+  const series  = document.getElementById('series').value;
+  const load_kg = document.getElementById('load_kg').value;
 
-  const params = new URLSearchParams({ width, depth, height, series });
+  const params = new URLSearchParams({ width, depth, height, series, load_kg });
   if (shelf) params.set('shelf', shelf);
 
   let resp;
@@ -196,19 +287,20 @@ document.getElementById('form').addEventListener('submit', async (ev) => {
     resp = await fetch(`/frame?${params}`);
   } catch (e) {
     errorEl.textContent = 'Network error: ' + e.message;
-    errorEl.style.display = '';
+    errorEl.style.display = 'block';
     return;
   }
 
   const data = await resp.json();
   if (!resp.ok) {
     errorEl.textContent = data.detail ?? 'Error';
-    errorEl.style.display = '';
+    errorEl.style.display = 'block';
     return;
   }
 
   renderBars(data.bars);
   renderCutList(data.cut_list);
+  renderChecks(data.check_report);
 });
 
 // Auto-load on page open

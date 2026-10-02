@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from framegen.catalog import load_catalog
+from framegen.checks import run_checks
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
 from framegen.spec import FrameSpec
@@ -26,7 +28,7 @@ def get_frame(
     height: float = Query(...),
     shelf: float | None = Query(default=None),
     series: str = Query(default="40-series"),
-    load_kg: float = Query(default=100.0),  # stored in spec; nothing uses it yet
+    load_kg: float = Query(default=100.0),
 ) -> dict[str, Any]:
     if series not in _CATALOG.profiles:
         raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
@@ -54,6 +56,7 @@ def get_frame(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     cut_list = build_cut_list(bars)
+    check_report = run_checks(bars, spec, profile)
 
     return {
         "bars": [
@@ -74,6 +77,7 @@ def get_frame(
             }
             for row in cut_list.rows
         ],
+        "check_report": dataclasses.asdict(check_report),
     }
 
 

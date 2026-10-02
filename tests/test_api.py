@@ -100,3 +100,42 @@ def test_unknown_series_returns_400() -> None:
     )
     assert resp.status_code == 400
     assert "unknown series" in resp.json()["detail"]
+
+
+# ── Check report ───────────────────────────────────────────────────────────────
+
+def test_check_report_present_in_response() -> None:
+    resp = client.get("/frame", params={"width": 1500, "depth": 700, "height": 900})
+    assert resp.status_code == 200
+    assert "check_report" in resp.json()
+
+
+def test_check_report_structure() -> None:
+    resp = client.get("/frame", params={"width": 1500, "depth": 700, "height": 900})
+    cr = resp.json()["check_report"]
+    assert "collision" in cr
+    assert "connectivity" in cr
+    assert "load" in cr
+    assert "passed" in cr
+
+
+def test_check_report_load_is_estimate() -> None:
+    resp = client.get("/frame", params={"width": 1500, "depth": 700, "height": 900})
+    load = resp.json()["check_report"]["load"]
+    assert load["is_estimate"] is True
+    assert load["status"] == "evaluated"
+
+
+def test_check_report_governing_rail_present() -> None:
+    resp = client.get("/frame", params={"width": 1500, "depth": 700, "height": 900})
+    load = resp.json()["check_report"]["load"]
+    assert load["governing_rail"] is not None
+    assert load["governing_rail"]["role"] == "top_rail_width"
+
+
+def test_check_report_valid_frame_passes() -> None:
+    resp = client.get("/frame", params={"width": 1500, "depth": 700, "height": 900})
+    cr = resp.json()["check_report"]
+    assert cr["collision"]["passed"] is True
+    assert cr["connectivity"]["passed"] is True
+    assert cr["load"]["passed"] is True

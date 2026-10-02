@@ -5,7 +5,11 @@
     {
       "part_number": "40-4040",
       "series": "40-series",
-      "profile_width_mm": 40
+      "profile_width_mm": 40,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 137870
     }
   ]
 }
