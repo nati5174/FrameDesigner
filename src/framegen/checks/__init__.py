@@ -74,9 +74,12 @@ class LegCheck:
     p_cr_n: float | None        # Euler critical load; None if not_evaluated
     p_cr_allowable_n: float | None  # P_cr / SAFETY_FACTOR; None if not_evaluated
     buckling_passed: bool
-    compressive_stress_status: Literal["not_evaluated"]
-    compressive_stress_reason: str
-    passed: bool                # True only when buckling evaluated and passed
+    compressive_stress_status: Literal["evaluated", "not_evaluated"]
+    compressive_stress_reason: str | None   # None when evaluated
+    compressive_stress_mpa: float | None    # None when not_evaluated
+    compressive_stress_allowable_mpa: float | None  # None when not_evaluated
+    compressive_stress_passed: bool | None  # None when not_evaluated
+    passed: bool
 
 
 @dataclass(frozen=True)
@@ -459,7 +462,14 @@ def _check_leg_buckling(spec: ShelfUnitSpec, profile: Profile) -> LegCheck:
             p_cr_allowable_n=None,
             buckling_passed=False,
             compressive_stress_status="not_evaluated",
-            compressive_stress_reason="cross_section_area_mm2 not in catalog",
+            compressive_stress_reason=(
+                "cross_section_area_mm2 not in catalog"
+                if profile.cross_section_area_mm2 is None
+                else None
+            ),
+            compressive_stress_mpa=None,
+            compressive_stress_allowable_mpa=None,
+            compressive_stress_passed=None,
             passed=False,
         )
 
@@ -469,6 +479,24 @@ def _check_leg_buckling(spec: ShelfUnitSpec, profile: Profile) -> LegCheck:
     p_cr = math.pi**2 * E * I_mm4 / l_eff**2
     p_cr_allow = p_cr / SAFETY_FACTOR
     buckling_passed = f_leg <= p_cr_allow
+
+    # Compressive stress sub-check
+    area = profile.cross_section_area_mm2
+    sy = profile.yield_strength_mpa
+    if area is None:
+        cs_status: Literal["evaluated", "not_evaluated"] = "not_evaluated"
+        cs_reason: str | None = "cross_section_area_mm2 not in catalog"
+        cs_mpa: float | None = None
+        cs_allow: float | None = None
+        cs_passed: bool | None = None
+    else:
+        cs_mpa = f_leg / area
+        cs_allow = (sy / SAFETY_FACTOR) if sy is not None else None
+        cs_passed = (cs_mpa <= cs_allow) if cs_allow is not None else None
+        cs_status = "evaluated"
+        cs_reason = None
+
+    leg_passed = buckling_passed and (cs_passed is not False)
 
     return LegCheck(
         is_estimate=True,
@@ -482,9 +510,12 @@ def _check_leg_buckling(spec: ShelfUnitSpec, profile: Profile) -> LegCheck:
         p_cr_n=p_cr,
         p_cr_allowable_n=p_cr_allow,
         buckling_passed=buckling_passed,
-        compressive_stress_status="not_evaluated",
-        compressive_stress_reason="cross_section_area_mm2 not in catalog",
-        passed=buckling_passed,
+        compressive_stress_status=cs_status,
+        compressive_stress_reason=cs_reason,
+        compressive_stress_mpa=cs_mpa,
+        compressive_stress_allowable_mpa=cs_allow,
+        compressive_stress_passed=cs_passed,
+        passed=leg_passed,
     )
 
 

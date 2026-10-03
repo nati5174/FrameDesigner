@@ -40,6 +40,7 @@ from framegen.parser import ParseResult  # noqa: E402
 from framegen.parser import parse as _dispatcher_parse  # noqa: E402
 from framegen.parser.llm import parse as _llm_parse  # noqa: E402
 from framegen.parser.rule_based import parse as _rb_parse  # noqa: E402
+from framegen.spec import ShelfUnitSpec  # noqa: E402
 
 _EVALS_DIR = Path(__file__).parent
 _RESULTS_DIR = _EVALS_DIR / "results"
@@ -88,10 +89,19 @@ def _score_prompt(p: dict[str, Any], result: ParseResult) -> PromptResult:
             w_ok = _check_field(spec.width_mm, exp.get("W"))
             d_ok = _check_field(spec.depth_mm, exp.get("D"))
             h_ok = _check_field(spec.height_mm, exp.get("H"))
-            s_ok = _check_field(spec.shelf_height_mm, exp.get("S"))
-            l_ok = _check_field(spec.target_load_kg, exp.get("L"))
+            if isinstance(spec, ShelfUnitSpec):
+                # Shelf unit: no shelf_height, load is per-level
+                s_ok = True
+                l_ok = _check_field(spec.load_per_level_kg, exp.get("L"))
+                # Check frame_type when caller specifies it
+                type_ok = exp.get("frame_type", "shelf_unit") == "shelf_unit"
+            else:
+                s_ok = _check_field(spec.shelf_height_mm, exp.get("S"))
+                l_ok = _check_field(spec.target_load_kg, exp.get("L"))
+                # If caller expects shelf_unit but got table, fail
+                type_ok = exp.get("frame_type", "table") == "table"
             field_results = {"W": w_ok, "D": d_ok, "H": h_ok, "S": s_ok, "L": l_ok}
-            passed = all(field_results.values())
+            passed = all(field_results.values()) and type_ok
 
     return PromptResult(
         id=p["id"],
@@ -177,11 +187,24 @@ def _report(
             "got_error": r.result.error,
             "got_spec": (
                 {
+                    "frame_type": (
+                        "shelf_unit"
+                        if isinstance(r.result.spec, ShelfUnitSpec)
+                        else "table"
+                    ),
                     "W": r.result.spec.width_mm,
                     "D": r.result.spec.depth_mm,
                     "H": r.result.spec.height_mm,
-                    "S": r.result.spec.shelf_height_mm,
-                    "L": r.result.spec.target_load_kg,
+                    "S": (
+                        None
+                        if isinstance(r.result.spec, ShelfUnitSpec)
+                        else r.result.spec.shelf_height_mm
+                    ),
+                    "L": (
+                        r.result.spec.load_per_level_kg
+                        if isinstance(r.result.spec, ShelfUnitSpec)
+                        else r.result.spec.target_load_kg
+                    ),
                 }
                 if r.result.spec else None
             ),

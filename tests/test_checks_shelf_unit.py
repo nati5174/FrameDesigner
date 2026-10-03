@@ -223,6 +223,7 @@ def test_leg_check_buckling_passes() -> None:
 def test_leg_check_compressive_stress_not_evaluated() -> None:
     result = _check_leg_buckling(_spec(), _profile())
     assert result.compressive_stress_status == "not_evaluated"
+    assert result.compressive_stress_reason is not None
     assert "cross_section_area_mm2" in result.compressive_stress_reason
 
 

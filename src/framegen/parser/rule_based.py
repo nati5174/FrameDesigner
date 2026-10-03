@@ -6,13 +6,10 @@ from typing import NamedTuple
 from pydantic import ValidationError
 
 from framegen.parser import ParseResult
-from framegen.spec import TableSpec
+from framegen.spec import MIN_LEVEL_HEIGHT_MM, ShelfUnitSpec, TableSpec
 
 # ── Regex helpers ─────────────────────────────────────────────────────────────
 
-# Matches a number (int or decimal) then an optional unit suffix.
-# Accepts both abbreviations (mm, cm, m, kg) and spelled-out forms.
-# Group 1 = digits, Group 2 = unit token.
 _NUM_UNIT_RE = re.compile(
     r'(\d+(?:\.\d+)?)\s*'
     r'(mm|millimetres?|millimeters?'
@@ -22,12 +19,10 @@ _NUM_UNIT_RE = re.compile(
     r')\b',
     re.IGNORECASE,
 )
-# Matches a bare number (no unit) — handled separately.
 _BARE_NUM_RE = re.compile(r'(\d+(?:\.\d+)?)(?!\s*(?:mm|cm|m(?!m)|kg|kilograms?)|\d)')
 
-_UNITLESS_SMALL = 100.0  # bare numbers < this in dimension context are ambiguous
+_UNITLESS_SMALL = 100.0
 
-# Dimension keywords — separate "long" so it can be remapped when "wide" also appears
 _KW_LONG = re.compile(r'(?<!\w)(?:long(?:er)?|length)(?!\w)', re.IGNORECASE)
 _KW_WIDE = re.compile(r'(?<!\w)(?:wide(?:r)?|width)(?!\w)', re.IGNORECASE)
 _KW = {
@@ -44,11 +39,6 @@ _KW = {
     ),
 }
 
-# Positional N×N or N×N×N block.
-# Unit alternatives are ordered longest-first so "millimetres" is matched in
-# full before the bare "m" alternative can grab its leading character.
-# "m\b" (word boundary) prevents the bare-metre alternative from matching the
-# leading 'm' of "millimetres" or "metres" when followed by more letters.
 _BLOCK_UNIT = (
     r'millimetres?|millimeters?|mm'
     r'|centimetres?|centimeters?|cm'
@@ -61,12 +51,37 @@ _BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ── Shelf-unit detection ──────────────────────────────────────────────────────
+
+# Words that unambiguously signal a shelf unit (not a table/bench)
+_SHELF_UNIT_RE = re.compile(
+    r'(?<!\w)(?:'
+    r'shelf\s+unit|shelving(?:\s+unit)?|bookcase|bookshelf'
+    r'|racking?|display\s+unit|storage\s+(?:unit|rack)|display\s+rack'
+    r')(?!\w)',
+    re.IGNORECASE,
+)
+
+# "3 shelves", "4 levels", "5-tier", …
+_LEVEL_COUNT_RE = re.compile(
+    r'(\d+)\s*[-\s]?(?:shelf|shelves|level|levels|tier|tiers)(?!\w)',
+    re.IGNORECASE,
+)
+
+# Keywords whose nearby numbers are shelf heights (not the frame W/D/H)
+_SHELF_H_KW = re.compile(
+    r'(?<!\w)(?:shelf|shelves|level|levels|tier|tiers)(?!\w)',
+    re.IGNORECASE,
+)
+
+_SHELF_H_RADIUS = 80  # chars around a shelf/level/tier keyword
+
 
 # ── Tokens ────────────────────────────────────────────────────────────────────
 
 class _Tok(NamedTuple):
-    raw: float    # numeric value as written
-    unit: str     # "mm" | "cm" | "m" | "kg" | ""
+    raw: float
+    unit: str   # "mm" | "cm" | "m" | "kg" | ""
     start: int
     end: int
 
@@ -76,7 +91,7 @@ class _Tok(NamedTuple):
             return self.raw * 10.0
         if self.unit == "m":
             return self.raw * 1000.0
-        return self.raw  # mm or bare (bare ≥100 treated as mm; bare <100 flagged)
+        return self.raw
 
     @property
     def kg(self) -> float:
@@ -97,7 +112,6 @@ def _norm_unit(u: str) -> str:
 
 
 def _extract_all_tokens(text: str) -> list[_Tok]:
-    """Extract every numeric token with its unit (if any)."""
     tokens: list[_Tok] = []
     used: set[int] = set()
 
@@ -120,15 +134,10 @@ def _extract_all_tokens(text: str) -> list[_Tok]:
 
 # ── Keyword→nearest-token assignment ─────────────────────────────────────────
 
-_SEARCH_RADIUS = 40  # chars: how far to look for a keyword near a number
+_SEARCH_RADIUS = 40
 
 
 def _effective_slot(slot: str, kw_text: str, text: str) -> str:
-    """
-    When "long/length" and "wide/width" BOTH appear in the text, treat
-    "long/length" as width and "wide/width" as depth (furniture convention:
-    long = longest side, wide = shorter horizontal side).
-    """
     if slot == "width" and _KW_LONG.search(text) and _KW_WIDE.search(text):
         if _KW_WIDE.search(kw_text):
             return "depth"
@@ -139,30 +148,20 @@ def _keyword_assignments(
     text: str, tokens: list[_Tok], pre_assigned: set[int],
     filled_slots: set[str] | None = None,
 ) -> dict[int, str]:
-    """
-    Return {token_index: slot_name} for keyword-matched tokens.
-
-    For each keyword occurrence, find the nearest unassigned token within
-    _SEARCH_RADIUS chars and assign it to that slot.  Earlier occurrences
-    take priority.  A token can only be assigned once.
-    """
-    # Collect keyword occurrences: (position, slot, matched_text)
     kw_hits: list[tuple[int, str, str]] = []
     for slot, pat in _KW.items():
         for m in pat.finditer(text):
             kw_hits.append((m.start(), slot, m.group(0)))
-    kw_hits.sort()  # process in text order
+    kw_hits.sort()
 
-    assigned_tok: dict[int, str] = {}   # token_index → slot
-    assigned_slots: dict[str, int] = {} # slot → token_index (first wins)
+    assigned_tok: dict[int, str] = {}
+    assigned_slots: dict[str, int] = {}
     _filled = filled_slots or set()
 
     for kw_pos, slot, kw_text in kw_hits:
         effective = _effective_slot(slot, kw_text, text)
         if effective in assigned_slots or effective in _filled:
-            # Already have a token for this slot — skip (duplicate handled later)
             continue
-        # Find nearest unassigned token within radius
         best_idx: int | None = None
         best_dist = _SEARCH_RADIUS + 1
         for i, tok in enumerate(tokens):
@@ -182,10 +181,10 @@ def _keyword_assignments(
 # ── Block parser ──────────────────────────────────────────────────────────────
 
 class _Block(NamedTuple):
-    w: float  # mm
-    d: float  # mm
-    h: float | None  # mm
-    raw_vals: list[tuple[float, str]]  # (raw_number, unit) for each position
+    w: float
+    d: float
+    h: float | None
+    raw_vals: list[tuple[float, str]]
     start: int
     end: int
 
@@ -195,7 +194,7 @@ def _to_mm(raw: float, unit: str) -> float:
         return raw * 10.0
     if unit == "m":
         return raw * 1000.0
-    return raw  # "mm" or bare (bare ≥100 treated as mm; bare <100 flagged later)
+    return raw
 
 
 def _find_first_block(text: str) -> _Block | None:
@@ -210,10 +209,6 @@ def _find_first_block(text: str) -> _Block | None:
     if m.group(5):
         vals.append((float(m.group(5)), _norm_unit(m.group(6) or "")))
 
-    # Trailing-unit propagation: "150 x 60 cm" → all cm → 1500 × 600 mm.
-    # Rule: if the last value has a unit AND every preceding value is bare,
-    # apply the last unit to the bare values.  When each number already has
-    # its own unit ("1.5m x 700mm x 90cm") no propagation occurs.
     if len(vals) >= 2 and vals[-1][1] != "" and all(v[1] == "" for v in vals[:-1]):
         trail = vals[-1][1]
         vals = [(v[0], trail) for v in vals]
@@ -223,6 +218,156 @@ def _find_first_block(text: str) -> _Block | None:
     h = _to_mm(*vals[2]) if len(vals) > 2 else None
 
     return _Block(w=w, d=d, h=h, raw_vals=list(vals), start=m.start(), end=m.end())
+
+
+# ── Shelf-unit helpers ────────────────────────────────────────────────────────
+
+def _count_pos_set(text: str, tokens: list[_Tok]) -> set[int]:
+    """Token indices that are part of a level-count phrase like '3 levels'."""
+    pos: set[int] = set()
+    for cm in _LEVEL_COUNT_RE.finditer(text):
+        for i, tok in enumerate(tokens):
+            if tok.start >= cm.start() and tok.end <= cm.end():
+                pos.add(i)
+    return pos
+
+
+def _shelf_nearby_values(
+    text: str,
+    tokens: list[_Tok],
+    block_indices: set[int],
+    count_pos: set[int],
+) -> list[float]:
+    """
+    Sorted mm values of tokens that sit near a shelf/level/tier keyword and
+    are plausible level heights (≥ MIN_LEVEL_HEIGHT_MM).  Excludes block
+    tokens, kg tokens, and count-phrase tokens.
+    """
+    seen: set[int] = set()
+    values: list[float] = []
+    for m in _SHELF_H_KW.finditer(text):
+        kpos = m.start()
+        for i, tok in enumerate(tokens):
+            if i in block_indices or tok.unit == "kg" or i in count_pos:
+                continue
+            if i in seen:
+                continue
+            dist = min(abs(tok.start - kpos), abs(tok.end - kpos))
+            if dist <= _SHELF_H_RADIUS and tok.mm >= MIN_LEVEL_HEIGHT_MM:
+                seen.add(i)
+                values.append(tok.mm)
+    return sorted(values)
+
+
+def _evenly_spaced_levels(H: float, n: int) -> list[float]:
+    """n evenly-spaced levels ending exactly at H."""
+    levels: list[float] = [float(round(H * (i + 1) / n)) for i in range(n)]
+    levels[-1] = H
+    return levels
+
+
+def _try_parse_shelf_unit(
+    text: str,
+    tokens: list[_Tok],
+    block: _Block | None,
+) -> ParseResult | None:
+    """
+    Attempt to parse the text as a shelf unit.  Returns None if the text does
+    not contain a shelf-unit signal so the caller can fall through to the table
+    parser.
+
+    Signals:
+      (a) Two or more explicit heights near a shelf/level/tier keyword.
+      (b) Shelf-unit type words (bookcase, shelving unit, rack, …).
+    """
+    has_signal = bool(_SHELF_UNIT_RE.search(text))
+
+    block_indices: set[int] = set()
+    if block is not None:
+        block_indices = {
+            i
+            for i, tok in enumerate(tokens)
+            if block.start <= tok.start < block.end
+        }
+
+    count_pos = _count_pos_set(text, tokens)
+    shelf_vals = _shelf_nearby_values(text, tokens, block_indices, count_pos)
+    has_two_shelves = len(shelf_vals) >= 2
+
+    if not has_signal and not has_two_shelves:
+        return None
+
+    if block is None:
+        return None
+
+    for raw_n, raw_u in block.raw_vals:
+        if raw_u == "" and raw_n < _UNITLESS_SMALL:
+            return _unitless_small_error(raw_n)
+
+    W = block.w
+    D = block.d
+    H_from_block = block.h
+
+    defaults: list[str] = []
+
+    # Frame height
+    if H_from_block is not None:
+        H = H_from_block
+    elif shelf_vals:
+        H = shelf_vals[-1]   # last explicit shelf height IS the frame top
+    else:
+        H = 1800.0 if has_signal else 900.0
+        defaults.append(f"height_mm={int(H)}")
+
+    # Level heights
+    if has_two_shelves:
+        levels: list[float] = list(shelf_vals)
+        if abs(levels[-1] - H) > 1.0:
+            levels = [v for v in levels if v < H - 1.0]
+            levels.append(H)
+    else:
+        # Signal word without explicit heights — use count or default 3
+        count_m = _LEVEL_COUNT_RE.search(text)
+        n = int(count_m.group(1)) if count_m else 3
+        n = max(3, min(n, 10))
+        levels = _evenly_spaced_levels(H, n)
+
+    # Load per level
+    load_toks = [tok for tok in tokens if tok.unit == "kg"]
+    if load_toks:
+        load_per_level: float = load_toks[0].kg
+    else:
+        load_per_level = 30.0
+        defaults.append("load_per_level_kg=30")
+
+    try:
+        spec = ShelfUnitSpec.model_validate(
+            dict(
+                frame_type="shelf_unit",
+                width_mm=W,
+                depth_mm=D,
+                height_mm=H,
+                profile_series="40-series",
+                level_heights_mm=levels,
+                load_per_level_kg=load_per_level,
+            )
+        )
+    except ValidationError as exc:
+        msgs = "; ".join(e["msg"] for e in exc.errors())
+        return ParseResult(
+            outcome="spec_invalid",
+            spec=None,
+            error=msgs,
+            parser_used="rule_based",
+        )
+
+    return ParseResult(
+        outcome="spec_valid",
+        spec=spec,
+        error=None,
+        defaults_applied=defaults,
+        parser_used="rule_based",
+    )
 
 
 # ── Main parse ────────────────────────────────────────────────────────────────
@@ -252,20 +397,24 @@ def parse(text: str) -> ParseResult:  # noqa: C901
     tokens = _extract_all_tokens(text)
     block = _find_first_block(text)
 
+    # ── Shelf-unit fast path ──────────────────────────────────────────────────
+    shelf_result = _try_parse_shelf_unit(text, tokens, block)
+    if shelf_result is not None:
+        return shelf_result
+
     # ── Slot candidates ───────────────────────────────────────────────────────
     slots: dict[str, list[float]] = {
         "width": [], "depth": [], "height": [], "shelf": [], "load": []
     }
     assigned_tok_indices: set[int] = set()
 
-    # (A) Tokens with kg unit are unambiguously load.
+    # (A) kg tokens → load
     for i, tok in enumerate(tokens):
         if tok.unit == "kg":
             slots["load"].append(tok.kg)
             assigned_tok_indices.add(i)
 
-    # (B) Pre-reserve block tokens so keyword assignment can't steal them.
-    #     Block tokens are only for W/D/H positional assignment (step D).
+    # (B) Reserve block tokens
     block_inside: list[int] = []
     if block is not None:
         block_inside = [
@@ -274,7 +423,7 @@ def parse(text: str) -> ParseResult:  # noqa: C901
         for i in block_inside:
             assigned_tok_indices.add(i)
 
-    # (C) Keyword-matched tokens (nearest-neighbour, skips already-assigned)
+    # (C) Keyword-matched tokens
     pre_filled: set[str] = set()
     if slots["load"]:
         pre_filled.add("load")
@@ -283,7 +432,6 @@ def parse(text: str) -> ParseResult:  # noqa: C901
     )
     for tok_idx, slot in kw_map.items():
         tok = tokens[tok_idx]
-        # Unitless-small check for dimension candidates
         is_dim = slot in ("width", "depth", "height")
         if is_dim and tok.unit == "" and tok.raw < _UNITLESS_SMALL:
             return _unitless_small_error(tok.raw)
@@ -291,53 +439,24 @@ def parse(text: str) -> ParseResult:  # noqa: C901
         slots[slot].append(val)
         assigned_tok_indices.add(tok_idx)
 
-    # (D) Positional block — fills ONLY slots not already filled by keywords
+    # (D) Positional block
     if block is not None:
-        # Check for unitless-small in block values
         for raw_n, raw_u in block.raw_vals:
             if raw_u == "" and raw_n < _UNITLESS_SMALL:
                 return _unitless_small_error(raw_n)
 
-        # Assign block values to empty slots
         if not slots["width"] and not slots["depth"]:
             slots["width"].append(block.w)
             slots["depth"].append(block.d)
             if block.h is not None and not slots["height"]:
                 slots["height"].append(block.h)
 
-    # ── Two-shelf rejection ──────────────────────────────────────────────────
-    # Check before strict accounting: find all numbers within 60 chars of any
-    # "shelf" keyword; if 2 or more distinct numbers are found, reject.
-    for sm in _KW["shelf"].finditer(text):
-        spos = sm.start()
-        nearby = [
-            tok for i, tok in enumerate(tokens)
-            if i not in set(block_inside)  # block tokens are W/D/H, not shelf heights
-            and tok.unit != "kg"           # load tokens are not shelf heights
-            and min(abs(tok.start - spos), abs(tok.end - spos)) <= 60
-        ]
-        if len(nearby) >= 2:
-            return ParseResult(
-                outcome="spec_invalid",
-                spec=None,
-                error="Only one shelf height is supported.",
-                parser_used="rule_based",
-            )
-
-    if len(slots["shelf"]) >= 2:
-        return ParseResult(
-            outcome="spec_invalid",
-            spec=None,
-            error="Only one shelf height is supported.",
-            parser_used="rule_based",
-        )
-
-    # ── Strict accounting: any unassigned token → not_parsed ─────────────────
+    # ── Strict accounting ─────────────────────────────────────────────────────
     for i in range(len(tokens)):
         if i not in assigned_tok_indices:
             return _NOT_PARSED
 
-    # ── Duplicate slot candidates → not_parsed ────────────────────────────────
+    # ── Duplicate slot candidates → not_parsed ─────────────────────────────────
     for slot, cands in slots.items():
         if len(cands) > 1:
             return _NOT_PARSED
@@ -346,7 +465,7 @@ def parse(text: str) -> ParseResult:  # noqa: C901
     if not slots["width"] or not slots["depth"]:
         return _NOT_PARSED
 
-    # ── Build spec with defaults ──────────────────────────────────────────────
+    # ── Build spec ────────────────────────────────────────────────────────────
     defaults: list[str] = []
 
     width_mm = slots["width"][0]

@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from pydantic import ValidationError
 
 from framegen.parser import ParseResult
-from framegen.spec import TableSpec
+from framegen.spec import ShelfUnitSpec, TableSpec
 
 # ── Client protocol (injectable for tests) ────────────────────────────────────
 
@@ -27,15 +27,10 @@ class _AnthropicClient(Protocol):
 
 
 _client: _AnthropicClient | None = None
-# When True, _get_client() returns _client as-is (even if None) instead of
-# attempting auto-initialisation from the environment. Set by set_client().
 _client_set_explicitly: bool = False
 
 
 def set_client(client: _AnthropicClient | None) -> None:
-    """Override the Anthropic client — used in tests to inject a mock.
-    Passing None disables auto-init from the environment until the flag is reset.
-    """
     global _client, _client_set_explicitly
     _client = client
     _client_set_explicitly = True
@@ -44,7 +39,7 @@ def set_client(client: _AnthropicClient | None) -> None:
 def _get_client() -> _AnthropicClient | None:
     global _client
     if _client_set_explicitly:
-        return _client  # explicit override: respect None as "no client"
+        return _client
     if _client is not None:
         return _client
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -65,8 +60,18 @@ You convert a user's description of an aluminium-extrusion frame into JSON.
 
 Return ONLY a JSON object — no code fences, no explanation.
 
-If you can extract the dimensions, return:
+Frame types:
+  "table"      — single work surface (bench, desk, stand, workbench)
+  "shelf_unit" — multiple shelves or levels (bookcase, shelving, rack, storage unit)
+
+A shelf unit requires an explicit signal: words like "shelf unit", "shelving",
+"bookcase", "bookshelf", "rack", "racking", "3 levels", "4 shelves", etc.
+A request with a single shelf at one height is a TABLE, not a shelf unit.
+
+──────────────────────────────────────────────────────────────────
+For a TABLE return:
 {
+  "frame_type": "table",
   "width_mm": <number>,
   "depth_mm": <number>,
   "height_mm": <number | null>,
@@ -74,26 +79,44 @@ If you can extract the dimensions, return:
   "target_load_kg": <number | null>
 }
 
+For a SHELF UNIT return:
+{
+  "frame_type": "shelf_unit",
+  "width_mm": <number>,
+  "depth_mm": <number>,
+  "height_mm": <number | null>,
+  "level_heights_mm": <sorted list of 3–10 numbers | null>,
+  "load_per_level_kg": <number | null>
+}
+──────────────────────────────────────────────────────────────────
+
 Rules:
 - Convert all measurements to millimetres (cm × 10, m × 1000).
-- If height is not mentioned, return null (the caller will apply a default).
-- If load is not mentioned, return null (the caller will apply a default).
-- If no shelf is mentioned, shelf_height_mm must be null.
-- If a dimension value is a bare number under 100 with no unit (e.g. "50 x 70 x 90"),
+- Default height when not stated: 900 mm for a table/bench/desk,
+  1800 mm for a shelf unit / bookcase / rack.
+- For a shelf unit, level_heights_mm must be sorted ascending, last value
+  must equal height_mm, minimum 3 entries. If the user gives explicit
+  heights, use them (add height_mm as the last entry if missing).
+  If not given, space levels evenly: e.g. 4 levels at height 2000 mm →
+  [500, 1000, 1500, 2000].
+- Return null for height_mm or level_heights_mm only when truly unknown
+  (the caller will apply the appropriate default).
+- If a dimension value is a bare number under 100 with no unit,
   return {"result": "unsupported",
-          "reason": "Unitless number is ambiguous (mm, cm, or m?). Please add units."}.
+          "reason": "Unitless number is ambiguous (mm, cm, or m?). \
+Please add units."}.
 - If you cannot determine width and depth,
   return {"result": "insufficient_information"}.
 - If the request is for an enclosure or cabinet (not an open frame), return
-  {"result": "unsupported", "reason": "Enclosures are not supported; only open frames."
-  }.
-- If imperial units are given (inches, feet), return
+  {"result": "unsupported",
+   "reason": "Enclosures are not supported; only open frames."}.
+- If imperial units are given, return
   {"result": "unsupported",
    "reason": "Imperial units are not supported. Please use mm, cm, or m."}.
 """
 
 _MODEL = "claude-haiku-4-5-20251001"
-_MAX_TOKENS = 256
+_MAX_TOKENS = 400
 _INPUT_CAP = 500
 _TIMEOUT = 10.0
 
@@ -126,14 +149,13 @@ def _call(client: _AnthropicClient, user_text: str, extra_system: str = "") -> s
 
 
 def _interpret(raw: str) -> ParseResult:
-    """Turn model raw text into a ParseResult. Does NOT do FrameSpec validation."""
+    """Turn model raw text into a ParseResult. Does NOT materialise FrameSpec."""
     text = _strip_fences(raw)
     try:
         data: dict[str, Any] = json.loads(text)
     except json.JSONDecodeError:
-        return _NOT_PARSED  # signal: retry
+        return _NOT_PARSED
 
-    # Explicit result keys
     result_key = data.get("result")
     if result_key == "insufficient_information":
         return _NOT_PARSED
@@ -145,74 +167,65 @@ def _interpret(raw: str) -> ParseResult:
             parser_used="llm",
         )
 
-    # Must have at least width_mm and depth_mm
     if "width_mm" not in data or "depth_mm" not in data:
-        return _NOT_PARSED  # signal: retry
+        return _NOT_PARSED
 
     return ParseResult(outcome="spec_valid", spec=None, error=None, parser_used="llm")
 
 
-def parse(text: str) -> ParseResult:
-    """
-    LLM-based parser. Pre-checks have already run in the dispatcher.
+def _materialise(data: dict[str, Any]) -> ParseResult:  # noqa: C901
+    """Build a TableSpec or ShelfUnitSpec from already-validated JSON data."""
+    defaults: list[str] = []
+    frame_type = data.get("frame_type", "table")
 
-    Retry logic:
-      - Malformed / missing-field response → 1 retry including the error.
-      - FrameSpec validation failure → spec_invalid immediately, no retry.
-    Error handling:
-      - Network / timeout / auth errors → not_parsed with error message.
-    """
-    client = _get_client()
-    if client is None:
-        return _NOT_PARSED
+    if frame_type == "shelf_unit":
+        height_mm = data.get("height_mm")
+        if height_mm is None:
+            height_mm = 1800.0
+            defaults.append("height_mm=1800")
 
-    user_text = text[:_INPUT_CAP]
+        level_heights_mm = data.get("level_heights_mm")
+        if level_heights_mm is None:
+            # Default: 3 evenly spaced levels
+            n = 3
+            level_heights_mm = [round(height_mm * (i + 1) / n) for i in range(n)]
+            level_heights_mm[-1] = height_mm
+            defaults.append("level_heights_mm=default_3_levels")
 
-    # First attempt
-    try:
-        raw = _call(client, user_text)
-    except Exception:
+        load_per_level = data.get("load_per_level_kg")
+        if load_per_level is None:
+            load_per_level = 30.0
+            defaults.append("load_per_level_kg=30")
+
+        try:
+            spec: ShelfUnitSpec | TableSpec = ShelfUnitSpec.model_validate(
+                dict(
+                    frame_type="shelf_unit",
+                    width_mm=data["width_mm"],
+                    depth_mm=data["depth_mm"],
+                    height_mm=height_mm,
+                    profile_series="40-series",
+                    level_heights_mm=level_heights_mm,
+                    load_per_level_kg=load_per_level,
+                )
+            )
+        except ValidationError as exc:
+            msgs = "; ".join(e["msg"] for e in exc.errors())
+            return ParseResult(
+                outcome="spec_invalid",
+                spec=None,
+                error=msgs,
+                parser_used="llm",
+            )
         return ParseResult(
-            outcome="not_parsed",
-            spec=None,
-            error=_LLM_ERROR,
+            outcome="spec_valid",
+            spec=spec,
+            error=None,
+            defaults_applied=defaults,
             parser_used="llm",
         )
 
-    result = _interpret(raw)
-
-    # Retry once on malformed/missing-field response
-    if result.outcome == "not_parsed":
-        retry_system = (
-            "\n\nPrevious response was not valid JSON or was missing required fields. "
-            f"Raw response was: {raw!r}. Please return only a valid JSON object."
-        )
-        try:
-            raw = _call(client, user_text, extra_system=retry_system)
-        except Exception:
-            return ParseResult(
-                outcome="not_parsed",
-                spec=None,
-                error=_LLM_ERROR,
-                parser_used="llm",
-            )
-        result = _interpret(raw)
-        if result.outcome == "not_parsed":
-            return _NOT_PARSED
-
-    # If interpret flagged spec_invalid already, return it
-    if result.outcome == "spec_invalid":
-        return result
-
-    # Now materialise FrameSpec from the parsed JSON (use the winning `raw`)
-    text_stripped = _strip_fences(raw)
-    try:
-        data: dict[str, Any] = json.loads(text_stripped)
-    except json.JSONDecodeError:
-        return _NOT_PARSED
-
-    defaults: list[str] = []
-
+    # ── Table ─────────────────────────────────────────────────────────────────
     height_mm = data.get("height_mm")
     if height_mm is None:
         height_mm = 900.0
@@ -245,7 +258,6 @@ def parse(text: str) -> ParseResult:
             error=msgs,
             parser_used="llm",
         )
-
     return ParseResult(
         outcome="spec_valid",
         spec=spec,
@@ -253,3 +265,59 @@ def parse(text: str) -> ParseResult:
         defaults_applied=defaults,
         parser_used="llm",
     )
+
+
+def parse(text: str) -> ParseResult:
+    """
+    LLM-based parser. Pre-checks have already run in the dispatcher.
+
+    Retry logic:
+      - Malformed / missing-field response → 1 retry.
+      - FrameSpec validation failure → spec_invalid, no retry.
+    """
+    client = _get_client()
+    if client is None:
+        return _NOT_PARSED
+
+    user_text = text[:_INPUT_CAP]
+
+    try:
+        raw = _call(client, user_text)
+    except Exception:
+        return ParseResult(
+            outcome="not_parsed",
+            spec=None,
+            error=_LLM_ERROR,
+            parser_used="llm",
+        )
+
+    result = _interpret(raw)
+
+    if result.outcome == "not_parsed":
+        retry_system = (
+            "\n\nPrevious response was not valid JSON or was missing required fields. "
+            f"Raw response was: {raw!r}. Please return only a valid JSON object."
+        )
+        try:
+            raw = _call(client, user_text, extra_system=retry_system)
+        except Exception:
+            return ParseResult(
+                outcome="not_parsed",
+                spec=None,
+                error=_LLM_ERROR,
+                parser_used="llm",
+            )
+        result = _interpret(raw)
+        if result.outcome == "not_parsed":
+            return _NOT_PARSED
+
+    if result.outcome == "spec_invalid":
+        return result
+
+    text_stripped = _strip_fences(raw)
+    try:
+        data: dict[str, Any] = json.loads(text_stripped)
+    except json.JSONDecodeError:
+        return _NOT_PARSED
+
+    return _materialise(data)

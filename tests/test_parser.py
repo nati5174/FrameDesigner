@@ -192,10 +192,12 @@ class TestRuleBasedRejections:
         # 50mm is fine — it has a unit suffix; should parse
         assert r.outcome == "spec_valid"
 
-    def test_two_shelves(self) -> None:
+    def test_two_shelves_becomes_shelf_unit(self) -> None:
+        from framegen.spec import ShelfUnitSpec
         r = rb_parse("1500mm x 700mm x 900mm, shelf at 300mm and 600mm")
-        assert r.outcome == "spec_invalid"
-        assert "shelf" in (r.error or "").lower()
+        assert r.outcome == "spec_valid"
+        assert isinstance(r.spec, ShelfUnitSpec)
+        assert r.spec.level_heights_mm == [300.0, 600.0, 900.0]
 
     def test_shelf_above_height(self) -> None:
         r = rb_parse("1500mm x 700mm x 900mm, shelf at 950mm")

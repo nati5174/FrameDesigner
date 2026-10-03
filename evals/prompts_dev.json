@@ -124,7 +124,7 @@
     {
       "id": "F5", "group": "F",
       "text": "1500mm x 700mm x 900mm, shelf at 300mm and 600mm",
-      "expected": {"outcome": "spec_invalid", "reason": "two_shelves"}
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 1500, "D": 700, "H": 900}
     },
     {
       "id": "F6", "group": "F",
@@ -230,6 +230,31 @@
       "id": "J6", "group": "J",
       "text": "frame 1.8 x 0.6 x 0.9 m",
       "expected": {"outcome": "spec_valid", "W": 1800, "D": 600, "H": 900}
+    },
+    {
+      "id": "K1", "group": "K",
+      "text": "shelf unit 900 x 400 x 1800mm, shelves at 600mm and 1200mm",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 900, "D": 400, "H": 1800}
+    },
+    {
+      "id": "K2", "group": "K",
+      "text": "bookcase 600 x 300 x 1800mm, 3 levels",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 600, "D": 300, "H": 1800}
+    },
+    {
+      "id": "K3", "group": "K",
+      "text": "storage rack 1200 x 500 x 2000mm, shelves at 500mm, 1000mm and 1500mm",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 1200, "D": 500, "H": 2000}
+    },
+    {
+      "id": "L1", "group": "L",
+      "text": "shelf unit 900 x 400mm, 3 shelves",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 900, "D": 400, "H": 1800, "defaults": ["height_mm=1800"]}
+    },
+    {
+      "id": "L2", "group": "L",
+      "text": "bookcase 600 x 300mm",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 600, "D": 300, "H": 1800, "defaults": ["height_mm=1800"]}
     }
   ]
 }

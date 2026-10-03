@@ -74,7 +74,7 @@
     {
       "id": "T15", "group": "F",
       "text": "1500mm x 700mm x 900mm, shelves at 300mm and 600mm",
-      "expected": {"outcome": "spec_invalid", "reason": "two_shelves"}
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 1500, "D": 700, "H": 900}
     },
     {
       "id": "T16", "group": "G",

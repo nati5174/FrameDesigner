@@ -22,6 +22,7 @@ class Profile(BaseModel):
     youngs_modulus_mpa: float | None = None
     yield_strength_mpa: float | None = None
     moment_of_inertia_mm4: float | None = None
+    cross_section_area_mm2: float | None = None
     source: str
     source_url: str
 
