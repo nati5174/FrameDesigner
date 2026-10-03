@@ -210,6 +210,14 @@ class TestRuleBasedRejections:
         r = rb_parse("make me a table")
         assert r.outcome == "not_parsed"
 
+    def test_metres_block_hits_sanity_limit(self) -> None:
+        # "750 metres" propagates metres to all → width 900 000 mm → spec_invalid
+        r = rb_parse("900 x 450 x 750 metres")
+        assert r.outcome == "spec_invalid"
+        assert r.error is not None
+        assert "exceeds maximum" in r.error
+        assert "check the units" in r.error
+
 
 # ── LLM parser (mocked) ───────────────────────────────────────────────────────
 
@@ -302,6 +310,72 @@ class TestLLMParser:
         llm_mod.set_client(client)  # type: ignore[arg-type]
         r = llm_parse("1500mm x 700mm x 900mm")
         assert r.outcome == "spec_valid"
+
+
+# ── Bug regressions: spelled-out unit names in block ─────────────────────────
+
+class TestSpelledOutUnitsInBlock:
+    """_BLOCK_RE used m(?!m) which matched the leading 'm' of 'millimetres'."""
+
+    def test_millimetres_block_height(self) -> None:
+        # Before fix: H was 750 000 mm (first 'm' of 'millimetres' grabbed as metres)
+        r = rb_parse("table 1400 x 600 x 750 millimetres")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.height_mm == pytest.approx(750.0)
+
+    def test_millimeters_american_spelling(self) -> None:
+        r = rb_parse("bench 1200 x 500 x 850 millimeters")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.height_mm == pytest.approx(850.0)
+
+    def test_centimetres_block_all_three(self) -> None:
+        r = rb_parse("frame 120 x 50 x 75 centimetres")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.width_mm == pytest.approx(1200.0)
+        assert r.spec.depth_mm == pytest.approx(500.0)
+        assert r.spec.height_mm == pytest.approx(750.0)
+
+
+# ── Bug regressions: trailing unit in positional block ────────────────────────
+
+class TestTrailingBlockUnit:
+    """Trailing unit on last block token must apply to all bare preceding tokens."""
+
+    def test_trailing_cm_two_values(self) -> None:
+        # Before fix: W was 150 mm (cm applied only to 60, not 150)
+        r = rb_parse("workbench 150 x 60 cm")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.width_mm == pytest.approx(1500.0)
+        assert r.spec.depth_mm == pytest.approx(600.0)
+
+    def test_trailing_m_two_values(self) -> None:
+        # '2' is bare < 100; without propagation this hits unitless-small → spec_invalid
+        r = rb_parse("table 2 x 0.7 m")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.width_mm == pytest.approx(2000.0)
+        assert r.spec.depth_mm == pytest.approx(700.0)
+
+    def test_trailing_cm_three_values(self) -> None:
+        r = rb_parse("frame 180 x 60 x 90 cm")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.width_mm == pytest.approx(1800.0)
+        assert r.spec.depth_mm == pytest.approx(600.0)
+        assert r.spec.height_mm == pytest.approx(900.0)
+
+    def test_per_token_units_not_propagated(self) -> None:
+        # Each number has its own unit — no propagation should occur
+        r = rb_parse("1.5m x 700mm x 90cm")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.width_mm == pytest.approx(1500.0)
+        assert r.spec.depth_mm == pytest.approx(700.0)
+        assert r.spec.height_mm == pytest.approx(900.0)
 
 
 # ── Dispatcher integration ────────────────────────────────────────────────────

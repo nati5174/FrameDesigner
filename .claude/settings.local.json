@@ -18,7 +18,9 @@
       "Bash(uvicorn framegen.api:app:*)",
       "Bash(npm run:*)",
       "Bash(./node_modules/.bin/next lint:*)",
-      "Bash(./node_modules/.bin/eslint .:*)"
+      "Bash(./node_modules/.bin/eslint .:*)",
+      "WebFetch(domain:8020.net)",
+      "WebFetch(domain:www.8020.net)"
     ]
   }
 }

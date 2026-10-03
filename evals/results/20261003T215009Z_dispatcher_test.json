@@ -1,0 +1,84 @@
+{
+  "timestamp": "20261003T215009Z",
+  "git_hash": "11bce50",
+  "prompt_file": "prompts_test.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "dispatcher",
+      "status": "ok",
+      "overall": "18/20",
+      "by_group": {
+        "A": "4/5",
+        "B": "3/4",
+        "C": "2/2",
+        "D": "3/3",
+        "E": "2/2",
+        "F": "4/4"
+      },
+      "by_field": {
+        "W": "15/16",
+        "D": "16/16",
+        "H": "15/16",
+        "S": "16/16",
+        "L": "16/16"
+      },
+      "failures": [
+        {
+          "id": "X03",
+          "text": "need a frame 900 x 450 x 750 millimetres",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 900,
+            "D": 450,
+            "H": 750,
+            "L": 100
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "W": 900.0,
+            "D": 450.0,
+            "H": 750000.0,
+            "S": null,
+            "L": 100.0
+          },
+          "field_results": {
+            "W": true,
+            "D": true,
+            "H": false,
+            "S": true,
+            "L": true
+          }
+        },
+        {
+          "id": "X06",
+          "text": "workbench 150 x 60 cm",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1500,
+            "D": 600,
+            "H": 900,
+            "L": 100
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "W": 150.0,
+            "D": 600.0,
+            "H": 900.0,
+            "S": null,
+            "L": 100.0
+          },
+          "field_results": {
+            "W": false,
+            "D": true,
+            "H": true,
+            "S": true,
+            "L": true
+          }
+        }
+      ]
+    }
+  ]
+}

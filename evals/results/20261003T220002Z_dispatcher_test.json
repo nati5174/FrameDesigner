@@ -1,0 +1,29 @@
+{
+  "timestamp": "20261003T220002Z",
+  "git_hash": "11bce50",
+  "prompt_file": "prompts_test.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "dispatcher",
+      "status": "ok",
+      "overall": "20/20",
+      "by_group": {
+        "A": "5/5",
+        "B": "4/4",
+        "C": "2/2",
+        "D": "3/3",
+        "E": "2/2",
+        "F": "4/4"
+      },
+      "by_field": {
+        "W": "16/16",
+        "D": "16/16",
+        "H": "16/16",
+        "S": "16/16",
+        "L": "16/16"
+      },
+      "failures": []
+    }
+  ]
+}

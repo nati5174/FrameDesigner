@@ -200,6 +200,36 @@
       "id": "I2", "group": "I",
       "text": "something sturdy for my workshop",
       "expected": {"outcome": "not_parsed"}
+    },
+    {
+      "id": "J1", "group": "J",
+      "text": "table 1400 x 600 x 750 millimetres",
+      "expected": {"outcome": "spec_valid", "W": 1400, "D": 600, "H": 750}
+    },
+    {
+      "id": "J2", "group": "J",
+      "text": "bench 1200 x 500 x 850 millimeters",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 500, "H": 850}
+    },
+    {
+      "id": "J3", "group": "J",
+      "text": "frame 120 x 50 x 75 centimetres",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 500, "H": 750}
+    },
+    {
+      "id": "J4", "group": "J",
+      "text": "workbench 160 x 80 cm",
+      "expected": {"outcome": "spec_valid", "W": 1600, "D": 800, "H": 900}
+    },
+    {
+      "id": "J5", "group": "J",
+      "text": "table 2 x 0.7 m",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 700, "H": 900}
+    },
+    {
+      "id": "J6", "group": "J",
+      "text": "frame 1.8 x 0.6 x 0.9 m",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 600, "H": 900}
     }
   ]
 }

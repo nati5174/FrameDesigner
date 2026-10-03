@@ -32,6 +32,17 @@ The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `
 ## Data shapes
 
 - **FrameSpec**: frame type, width, depth, height (mm), target load (kg), options (shelf, casters, `centre_legs`), profile series. `centre_legs: bool = False` — when `True`, two extra legs are placed at mid-width, splitting each width rail and shelf rail into two equal half-spans.
+  Sanity limits (named constants in `spec.py`; changing requires approval):
+
+  | Constant | Value | Field |
+  |---|---|---|
+  | `MAX_WIDTH_MM` | 4 000 mm | `width_mm` |
+  | `MAX_DEPTH_MM` | 2 000 mm | `depth_mm` |
+  | `MAX_HEIGHT_MM` | 2 500 mm | `height_mm` |
+  | `MAX_LOAD_KG` | 2 000 kg | `target_load_kg` |
+
+  A spec outside these ranges is rejected (`spec_invalid`) with the message:
+  `<field> <value> exceeds maximum <limit> <unit> — check the units`
 - **FixCandidate**: fix type (`reduce_span_width`, `reduce_span_depth`, `reduce_load`, `centre_legs`), modified `FrameSpec`, verified `CheckReport`, template `trade_off` string, `resolves` field (which load case the fix targets), and `concentrated_warning_remains`.
 - **Bar**: profile id, start point, end point, length (mm), role (leg, centre_leg, rail, brace, shelf support).
 - **Joint**: the two bars it connects, position, connector type.

@@ -67,3 +67,48 @@ def test_shelf_above_height_rejected() -> None:
 def test_shelf_zero_rejected() -> None:
     with pytest.raises(ValidationError):
         _valid(shelf_height_mm=0.0)
+
+
+# ── Sanity limits ─────────────────────────────────────────────────────────────
+
+class TestSanityLimits:
+    def test_width_at_limit_accepted(self) -> None:
+        spec = _valid(width_mm=4000.0)
+        assert spec.width_mm == 4000.0
+
+    def test_width_above_limit_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _valid(width_mm=4001.0)
+
+    def test_depth_at_limit_accepted(self) -> None:
+        spec = _valid(depth_mm=2000.0)
+        assert spec.depth_mm == 2000.0
+
+    def test_depth_above_limit_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _valid(depth_mm=2001.0)
+
+    def test_height_at_limit_accepted(self) -> None:
+        spec = _valid(height_mm=2500.0)
+        assert spec.height_mm == 2500.0
+
+    def test_height_above_limit_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _valid(height_mm=2501.0)
+
+    def test_load_at_limit_accepted(self) -> None:
+        spec = _valid(target_load_kg=2000.0)
+        assert spec.target_load_kg == 2000.0
+
+    def test_load_above_limit_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _valid(target_load_kg=2001.0)
+
+    def test_error_message_content(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            _valid(width_mm=5000.0)
+        msg = exc_info.value.errors()[0]["msg"]
+        assert "width_mm" in msg
+        assert "5000" in msg
+        assert "4000" in msg
+        assert "check the units" in msg

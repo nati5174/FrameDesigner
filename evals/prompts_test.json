@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "prompts": [
+    {
+      "id": "X01", "group": "A",
+      "text": "workbench 1200 x 600 x 900 mm",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 600, "H": 900, "L": 100}
+    },
+    {
+      "id": "X02", "group": "A",
+      "text": "table frame 1800mm wide 750mm deep 850mm tall holds 80 kg",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 750, "H": 850, "L": 80}
+    },
+    {
+      "id": "X03", "group": "A",
+      "text": "need a frame 900 x 450 x 750 millimetres",
+      "expected": {"outcome": "spec_valid", "W": 900, "D": 450, "H": 750, "L": 100}
+    },
+    {
+      "id": "X04", "group": "A",
+      "text": "2000 x 800 mm table, 150 kg",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 800, "H": 900, "L": 150}
+    },
+    {
+      "id": "X05", "group": "A",
+      "text": "workbench 1500mm wide 700mm deep 900mm tall",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "L": 100}
+    },
+    {
+      "id": "X06", "group": "B",
+      "text": "workbench 150 x 60 cm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 600, "H": 900, "L": 100}
+    },
+    {
+      "id": "X07", "group": "B",
+      "text": "frame 1.2m x 0.5m x 0.8m",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 500, "H": 800, "L": 100}
+    },
+    {
+      "id": "X08", "group": "B",
+      "text": "workbench 3m by 70cm",
+      "expected": {"outcome": "spec_valid", "W": 3000, "D": 700, "H": 900, "L": 100}
+    },
+    {
+      "id": "X09", "group": "B",
+      "text": "table 1.5 metres wide 70 centimetres deep 90 centimetres tall",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "L": 100}
+    },
+    {
+      "id": "X10", "group": "C",
+      "text": "workbench 1200 x 600 mm",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 600, "H": 900, "L": 100}
+    },
+    {
+      "id": "X11", "group": "C",
+      "text": "frame 800 x 400 x 750 mm, holds 50 kg",
+      "expected": {"outcome": "spec_valid", "W": 800, "D": 400, "H": 750, "L": 50}
+    },
+    {
+      "id": "X12", "group": "D",
+      "text": "1600 x 700 x 850 mm workbench with shelf, 200 kg",
+      "expected": {"outcome": "spec_valid", "W": 1600, "D": 700, "H": 850, "S": 300, "L": 200}
+    },
+    {
+      "id": "X13", "group": "D",
+      "text": "1000mm x 500mm table with a lower shelf",
+      "expected": {"outcome": "spec_valid", "W": 1000, "D": 500, "H": 900, "S": 300, "L": 100}
+    },
+    {
+      "id": "X14", "group": "D",
+      "text": "lab bench 2400 x 900 mm with bottom shelf holds 120 kg",
+      "expected": {"outcome": "spec_valid", "W": 2400, "D": 900, "H": 900, "S": 300, "L": 120}
+    },
+    {
+      "id": "X15", "group": "E",
+      "text": "hey I want to build a small table frame roughly 800 by 600 mm about 750mm tall",
+      "expected": {"outcome": "spec_valid", "W": 800, "D": 600, "H": 750, "L": 100}
+    },
+    {
+      "id": "X16", "group": "E",
+      "text": "can you design a sim racing rig frame 1.8m long 60cm wide",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 600, "H": 900, "L": 100}
+    },
+    {
+      "id": "X17", "group": "F",
+      "text": "workbench 60 x 24 inches holds 100 lbs",
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "X18", "group": "F",
+      "text": "I just need something to hold my tools in the garage",
+      "expected": {"outcome": "not_parsed"}
+    },
+    {
+      "id": "X19", "group": "F",
+      "text": "3D printer enclosure 400 x 400 x 500 mm",
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "X20", "group": "F",
+      "text": "frame 80 x 50 x 90",
+      "expected": {"outcome": "spec_invalid"}
+    }
+  ]
+}

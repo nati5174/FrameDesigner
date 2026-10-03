@@ -44,11 +44,20 @@ _KW = {
     ),
 }
 
-# Positional N×N or N×N×N block
+# Positional N×N or N×N×N block.
+# Unit alternatives are ordered longest-first so "millimetres" is matched in
+# full before the bare "m" alternative can grab its leading character.
+# "m\b" (word boundary) prevents the bare-metre alternative from matching the
+# leading 'm' of "millimetres" or "metres" when followed by more letters.
+_BLOCK_UNIT = (
+    r'millimetres?|millimeters?|mm'
+    r'|centimetres?|centimeters?|cm'
+    r'|metres?|meters?|m\b'
+)
 _BLOCK_RE = re.compile(
-    r'(\d+(?:\.\d+)?)\s*(mm|cm|m(?!m)|)?\s*(?:x|×|by)\s*'
-    r'(\d+(?:\.\d+)?)\s*(mm|cm|m(?!m)|)?'
-    r'(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(mm|cm|m(?!m)|)?)?',
+    r'(\d+(?:\.\d+)?)\s*(' + _BLOCK_UNIT + r')?\s*(?:x|×|by)\s*'
+    r'(\d+(?:\.\d+)?)\s*(' + _BLOCK_UNIT + r')?'
+    r'(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(' + _BLOCK_UNIT + r')?)?',
     re.IGNORECASE,
 )
 
@@ -181,21 +190,39 @@ class _Block(NamedTuple):
     end: int
 
 
+def _to_mm(raw: float, unit: str) -> float:
+    if unit == "cm":
+        return raw * 10.0
+    if unit == "m":
+        return raw * 1000.0
+    return raw  # "mm" or bare (bare ≥100 treated as mm; bare <100 flagged later)
+
+
 def _find_first_block(text: str) -> _Block | None:
     m = _BLOCK_RE.search(text)
     if not m:
         return None
-    n1, u1 = float(m.group(1)), _norm_unit(m.group(2) or "")
-    n2, u2 = float(m.group(3)), _norm_unit(m.group(4) or "")
-    w = n1 * (10 if u1 == "cm" else 1000 if u1 == "m" else 1)
-    d = n2 * (10 if u2 == "cm" else 1000 if u2 == "m" else 1)
-    h: float | None = None
-    raw_vals = [(n1, u1), (n2, u2)]
+
+    vals: list[tuple[float, str]] = [
+        (float(m.group(1)), _norm_unit(m.group(2) or "")),
+        (float(m.group(3)), _norm_unit(m.group(4) or "")),
+    ]
     if m.group(5):
-        n3, u3 = float(m.group(5)), _norm_unit(m.group(6) or "")
-        h = n3 * (10 if u3 == "cm" else 1000 if u3 == "m" else 1)
-        raw_vals.append((n3, u3))
-    return _Block(w=w, d=d, h=h, raw_vals=raw_vals, start=m.start(), end=m.end())
+        vals.append((float(m.group(5)), _norm_unit(m.group(6) or "")))
+
+    # Trailing-unit propagation: "150 x 60 cm" → all cm → 1500 × 600 mm.
+    # Rule: if the last value has a unit AND every preceding value is bare,
+    # apply the last unit to the bare values.  When each number already has
+    # its own unit ("1.5m x 700mm x 90cm") no propagation occurs.
+    if len(vals) >= 2 and vals[-1][1] != "" and all(v[1] == "" for v in vals[:-1]):
+        trail = vals[-1][1]
+        vals = [(v[0], trail) for v in vals]
+
+    w = _to_mm(*vals[0])
+    d = _to_mm(*vals[1])
+    h = _to_mm(*vals[2]) if len(vals) > 2 else None
+
+    return _Block(w=w, d=d, h=h, raw_vals=list(vals), start=m.start(), end=m.end())
 
 
 # ── Main parse ────────────────────────────────────────────────────────────────
