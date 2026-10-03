@@ -1,0 +1,32 @@
+{
+  "timestamp": "20261003T003856Z",
+  "git_hash": "c73656c",
+  "prompt_file": "prompts_dev.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "dispatcher",
+      "status": "ok",
+      "overall": "40/40",
+      "by_group": {
+        "A": "8/8",
+        "B": "2/2",
+        "C": "3/3",
+        "D": "4/4",
+        "E": "3/3",
+        "F": "6/6",
+        "G": "4/4",
+        "H": "8/8",
+        "I": "2/2"
+      },
+      "by_field": {
+        "W": "32/32",
+        "D": "32/32",
+        "H": "32/32",
+        "S": "32/32",
+        "L": "32/32"
+      },
+      "failures": []
+    }
+  ]
+}

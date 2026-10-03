@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "prompts": [
+    {
+      "id": "T01", "group": "A",
+      "text": "2000 x 900 x 750 mm table",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 900, "H": 750}
+    },
+    {
+      "id": "T02", "group": "A",
+      "text": "600mm x 400mm x 800mm",
+      "expected": {"outcome": "spec_valid", "W": 600, "D": 400, "H": 800}
+    },
+    {
+      "id": "T03", "group": "C",
+      "text": "200cm x 80cm x 85cm",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 800, "H": 850}
+    },
+    {
+      "id": "T04", "group": "C",
+      "text": "2m x 0.9m x 0.75m",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 900, "H": 750}
+    },
+    {
+      "id": "T05", "group": "A",
+      "text": "1200 x 600 x 720",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 600, "H": 720}
+    },
+    {
+      "id": "T06", "group": "B",
+      "text": "750mm high, 1200mm wide, 500mm deep",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 500, "H": 750}
+    },
+    {
+      "id": "T07", "group": "D",
+      "text": "table 1800 x 800 x 760 mm, 250kg",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 800, "H": 760, "L": 250}
+    },
+    {
+      "id": "T08", "group": "D",
+      "text": "holds 300kg, 2000mm x 1000mm x 900mm",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 1000, "H": 900, "L": 300}
+    },
+    {
+      "id": "T09", "group": "E",
+      "text": "1500mm x 700mm x 1200mm with shelf at 500mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 1200, "S": 500}
+    },
+    {
+      "id": "T10", "group": "E",
+      "text": "table 1800 x 800 x 900 mm, lower shelf 400mm, 120kg",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 800, "H": 900, "S": 400, "L": 120}
+    },
+    {
+      "id": "T11", "group": "F",
+      "text": "4ft x 2ft x 3ft",
+      "expected": {"outcome": "spec_invalid", "reason": "imperial"}
+    },
+    {
+      "id": "T12", "group": "F",
+      "text": "48\" x 24\" x 36\"",
+      "expected": {"outcome": "spec_invalid", "reason": "imperial"}
+    },
+    {
+      "id": "T13", "group": "F",
+      "text": "table 80 x 40 x 70",
+      "expected": {"outcome": "spec_invalid", "reason": "unitless"}
+    },
+    {
+      "id": "T14", "group": "F",
+      "text": "enclosed storage unit, 1200mm x 600mm x 900mm",
+      "expected": {"outcome": "spec_invalid", "reason": "enclosure"}
+    },
+    {
+      "id": "T15", "group": "F",
+      "text": "1500mm x 700mm x 900mm, shelves at 300mm and 600mm",
+      "expected": {"outcome": "spec_invalid", "reason": "two_shelves"}
+    },
+    {
+      "id": "T16", "group": "G",
+      "text": "long workshop bench, 3 metres wide, 80cm deep, 90cm high",
+      "expected": {"outcome": "spec_valid", "W": 3000, "D": 800, "H": 900}
+    },
+    {
+      "id": "T17", "group": "G",
+      "text": "I want a desk that is 140 centimetres wide, 70 centimetres deep, 72 centimetres tall",
+      "expected": {"outcome": "spec_valid", "W": 1400, "D": 700, "H": 720}
+    },
+    {
+      "id": "T18", "group": "G",
+      "text": "standing desk 160cm x 80cm x 110cm holding 50 kilograms",
+      "expected": {"outcome": "spec_valid", "W": 1600, "D": 800, "H": 1100, "L": 50}
+    },
+    {
+      "id": "T19", "group": "H",
+      "text": "1500mm x 700mm x 900mm table, 6mm thick top",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "T20", "group": "H",
+      "text": "1800mm long 600mm wide 900mm tall, 80kg",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 600, "H": 900, "L": 80}
+    },
+    {
+      "id": "T21", "group": "H",
+      "text": "worrkbench 1500mm x 700mm x 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    }
+  ]
+}

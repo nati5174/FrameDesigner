@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "prompts": [
+    {
+      "id": "A1", "group": "A",
+      "text": "1500mm x 700mm x 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A2", "group": "A",
+      "text": "table 1500 x 700 x 900 mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A3", "group": "A",
+      "text": "width 1500mm depth 700mm height 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A4", "group": "A",
+      "text": "1500mm wide 700mm deep 900mm tall",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A5", "group": "A",
+      "text": "workbench 1500mm x 700mm x 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A6", "group": "A",
+      "text": "1500 x 700 x 900",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A7", "group": "A",
+      "text": "bench to hold my toolbox, 1500 x 700 x 900 mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "A8", "group": "A",
+      "text": "1500 in width, 700 deep, 900 tall",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "B1", "group": "B",
+      "text": "900mm tall, 1500mm wide, 700mm deep",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "B2", "group": "B",
+      "text": "depth 700mm, height 900mm, width 1500mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "C1", "group": "C",
+      "text": "150cm x 70cm x 90cm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "C2", "group": "C",
+      "text": "1.5m wide, 0.7m deep, 0.9m tall",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "C3", "group": "C",
+      "text": "1.5m x 700mm x 90cm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "D1", "group": "D",
+      "text": "1500mm x 700mm x 900mm, 200kg",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "L": 200}
+    },
+    {
+      "id": "D2", "group": "D",
+      "text": "table 1500 x 700 x 900 mm, holds 150kg",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "L": 150}
+    },
+    {
+      "id": "D3", "group": "D",
+      "text": "workbench 1500 x 700 mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "defaults": ["height_mm=900"]}
+    },
+    {
+      "id": "D4", "group": "D",
+      "text": "1500x700 bench, lower shelf",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "S": 300, "defaults": ["height_mm=900", "shelf_height_mm=300"]}
+    },
+    {
+      "id": "E1", "group": "E",
+      "text": "1500mm x 700mm x 900mm, shelf at 300mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "S": 300}
+    },
+    {
+      "id": "E2", "group": "E",
+      "text": "table 1500 x 700 x 1200 mm, lower shelf at 400mm, 100kg",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 1200, "S": 400, "L": 100}
+    },
+    {
+      "id": "E3", "group": "E",
+      "text": "1200mm x 500mm x 1800mm, shelf 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 500, "H": 1800, "S": 900}
+    },
+    {
+      "id": "F1", "group": "F",
+      "text": "60\" x 28\" x 36\"",
+      "expected": {"outcome": "spec_invalid", "reason": "imperial"}
+    },
+    {
+      "id": "F2", "group": "F",
+      "text": "5ft wide, 2ft deep, 3ft tall",
+      "expected": {"outcome": "spec_invalid", "reason": "imperial"}
+    },
+    {
+      "id": "F3", "group": "F",
+      "text": "table 50 x 70 x 90",
+      "expected": {"outcome": "spec_invalid", "reason": "unitless"}
+    },
+    {
+      "id": "F4", "group": "F",
+      "text": "enclosed cabinet 1500mm x 700mm x 900mm",
+      "expected": {"outcome": "spec_invalid", "reason": "enclosure"}
+    },
+    {
+      "id": "F5", "group": "F",
+      "text": "1500mm x 700mm x 900mm, shelf at 300mm and 600mm",
+      "expected": {"outcome": "spec_invalid", "reason": "two_shelves"}
+    },
+    {
+      "id": "F6", "group": "F",
+      "text": "1500mm x 700mm x 900mm, shelf at 950mm",
+      "expected": {"outcome": "spec_invalid", "reason": "shelf_above_height"}
+    },
+    {
+      "id": "G1", "group": "G",
+      "text": "I need a workbench one and a half metres wide, seventy centimetres deep, ninety centimetres high",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "G2", "group": "G",
+      "text": "a solid bench, two metres wide, eighty centimetres deep, ninety centimetres high, must hold 150 kilograms",
+      "expected": {"outcome": "spec_valid", "W": 2000, "D": 800, "H": 900, "L": 150}
+    },
+    {
+      "id": "G3", "group": "G",
+      "text": "lab bench three metres long, one metre deep, ninety centimetres high",
+      "expected": {"outcome": "spec_valid", "W": 3000, "D": 1000, "H": 900}
+    },
+    {
+      "id": "G4", "group": "G",
+      "text": "standing desk, 160 centimetres wide, 80 centimetres deep, 110 centimetres high",
+      "expected": {"outcome": "spec_valid", "W": 1600, "D": 800, "H": 1100}
+    },
+    {
+      "id": "H1", "group": "H",
+      "text": "1500mm x 700mm x 900mm table, 4 legs",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "H2", "group": "H",
+      "text": "table for 3 people, 1800mm wide, 900mm deep, 750mm tall",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 900, "H": 750}
+    },
+    {
+      "id": "H3", "group": "H",
+      "text": "1500mm x 700mm x 900mm, 6mm thick top panel",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "H4", "group": "H",
+      "text": "1800mm long 600mm wide 900mm tall",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 600, "H": 900}
+    },
+    {
+      "id": "H5", "group": "H",
+      "text": "worktabel 1500mm x 700mm x 900mm",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900}
+    },
+    {
+      "id": "H6", "group": "H",
+      "text": "1500mm wide by 700mm deep by 900mm high, can hold 80 kilograms",
+      "expected": {"outcome": "spec_valid", "W": 1500, "D": 700, "H": 900, "L": 80}
+    },
+    {
+      "id": "H7", "group": "H",
+      "text": "a frame for my laser cutter, which is 600 x 400 mm; the frame should be 1200 x 800 mm, 900 high",
+      "expected": {"outcome": "spec_valid", "W": 1200, "D": 800, "H": 900}
+    },
+    {
+      "id": "H8", "group": "H",
+      "text": "1500 wide, actually make it 1800, 700 deep, 900 high",
+      "expected": {"outcome": "spec_valid", "W": 1800, "D": 700, "H": 900}
+    },
+    {
+      "id": "I1", "group": "I",
+      "text": "make me a table",
+      "expected": {"outcome": "not_parsed"}
+    },
+    {
+      "id": "I2", "group": "I",
+      "text": "something sturdy for my workshop",
+      "expected": {"outcome": "not_parsed"}
+    }
+  ]
+}

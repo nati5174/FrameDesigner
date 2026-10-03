@@ -42,9 +42,9 @@ The LLM is used in exactly one place: text to `FrameSpec`. Everything else is pl
 | `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table) |
 | `checks/` | Collision, connectivity, load estimate | catalog | done |
 | `outputs/` | Cut list and BOM | catalog | cut list done; BOM not started |
-| `parser/` | Text to `FrameSpec`; LLM call with validation retry, rule-based fallback | spec | not started |
+| `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher | spec | done (not wired into API) |
 | `api.py` | One endpoint: text or spec in, full result out | all of the above | partial (no parser) |
-| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | not started |
+| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression prompt sets; harness runs) |
 | `web/` | Prompt box, Three.js viewer, tables | api | done (viewer, cut list, checks) |
 
 Dependencies point one way. `generate`, `checks`, and `outputs` must not import `parser`, so the core runs and tests without an API key.
@@ -141,13 +141,72 @@ If any of `youngs_modulus_mpa`, `yield_strength_mpa`, or `moment_of_inertia_mm4`
 - Scores: valid spec rate, valid frame rate, dimension match rate
 - Each run is logged with date, parser version, and model, so runs can be compared
 
+## Parser
+
+`src/framegen/parser/` implements text → `FrameSpec` with three outcomes:
+
+| Outcome | Meaning |
+|---|---|
+| `spec_valid` | Parsed cleanly; `ParseResult.spec` is set |
+| `spec_invalid` | Explicitly bad input; `ParseResult.error` explains why; LLM not tried |
+| `not_parsed` | Rule-based gave up; dispatcher passes to LLM |
+
+### `ParseResult`
+
+```python
+@dataclass
+class ParseResult:
+    outcome: Literal["spec_valid", "spec_invalid", "not_parsed"]
+    spec: FrameSpec | None
+    error: str | None
+    defaults_applied: list[str]   # e.g. ["height_mm=900", "target_load_kg=100"]
+    parser_used: Literal["rule_based", "llm", "none"]
+```
+
+### Dispatcher (`parser/__init__.py`)
+
+1. Pre-checks: imperial units → `spec_invalid`; enclosure keywords → `spec_invalid`
+2. Rule-based parser
+3. If `not_parsed` → LLM parser
+
+### Rule-based parser (`parser/rule_based.py`)
+
+- Extracts numeric tokens (with mm/cm/m/kg unit suffixes, abbreviated or spelled out)
+- Assigns tokens to slots (width, depth, height, shelf, load) via nearest-keyword matching
+- Positional block (`N × N` or `N × N × N`) assigns W/D/H when no keyword claims them
+- **Strict accounting**: any unassigned token → `not_parsed`
+- Unitless-small check: bare number < 100 in a dimension slot → `spec_invalid` (ambiguous unit)
+- Two-shelf detection → `spec_invalid`
+- Defaults: `height_mm=900`, `shelf_height_mm=300` (when shelf keyword present), `target_load_kg=100`
+- Width and depth are required; no defaults
+
+### LLM parser (`parser/llm.py`)
+
+- Calls `claude-haiku-4-5` with a structured system prompt
+- Asks for 5 fields; `frame_type` and `profile_series` are set in code
+- Strips code fences before JSON parse
+- Malformed response → 1 retry (includes error in retry prompt)
+- `FrameSpec` validation failure → `spec_invalid` (no retry)
+- LLM may return `{"result": "insufficient_information"}` → `not_parsed`
+- LLM may return `{"result": "unsupported", "reason": "..."}` → `spec_invalid`
+- Client injectable via `llm.set_client()` for test mocking; no live calls in tests
+
+### Eval harness (`evals/run.py`)
+
+```
+python -m evals.run --config rule_based|llm|dispatcher|all --file dev|regression
+```
+
+Reports: overall pass rate, per-group pass rate, per-field pass rate (W/D/H/S/L).
+Results committed to `evals/results/`. `prompts_test.json` is user-written and never read during parser work.
+
 ## Build order
 
 1. Catalog pipeline ✓
 2. Spec and frame generator ✓
 3. Checks ✓
 4. Cut list and BOM (cut list done)
-5. Prompt parser
-6. Eval harness
-7. Web page (viewer and checks done)
+5. Prompt parser ✓
+6. Eval harness ✓
+7. Web page (viewer and checks done; parser not wired into UI yet)
 8. Release work (hosting, real catalogs, CAD export)
