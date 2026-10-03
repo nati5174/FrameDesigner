@@ -14,6 +14,8 @@ Role = Literal[
     "shelf_rail_width",
     "shelf_rail_depth",
     "centre_leg",
+    "level_rail_width",
+    "level_rail_depth",
 ]
 
 
@@ -31,14 +33,28 @@ class Bar:
     end: Point
     length_mm: float
     role: Role
+    level_index: int | None = None
 
 
-def _bar(profile_id: str, start: Point, end: Point, role: Role) -> Bar:
+def _bar(
+    profile_id: str,
+    start: Point,
+    end: Point,
+    role: Role,
+    level_index: int | None = None,
+) -> Bar:
     length = math.dist(
         (start.x, start.y, start.z),
         (end.x, end.y, end.z),
     )
-    return Bar(profile_id=profile_id, start=start, end=end, length_mm=length, role=role)
+    return Bar(
+        profile_id=profile_id,
+        start=start,
+        end=end,
+        length_mm=length,
+        role=role,
+        level_index=level_index,
+    )
 
 
 def generate_table(spec: TableSpec, profile: Profile) -> list[Bar]:
