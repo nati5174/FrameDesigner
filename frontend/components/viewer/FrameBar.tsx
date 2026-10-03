@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { toThree } from "@/lib/coordinates";
 
-const MM = 1 / 1000; // mm → metres
+const MM = 1 / 1000;
 
 function roleColor(role: string): string {
   if (role === "leg" || role === "centre_leg") return "#4A7FB5";
@@ -11,13 +12,19 @@ function roleColor(role: string): string {
   return "#6B9EC4";
 }
 
+/** Ease-out cubic. */
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 interface FrameBarProps {
   start: [number, number, number];
   end: [number, number, number];
   profileWidthMm: number;
   role: string;
-  /** When set, bars whose length matches (±0.5 mm) glow amber. */
   highlightLength: number | null;
+  /** Delay before this bar's entrance animation starts (ms). */
+  animDelay: number;
 }
 
 export function FrameBar({
@@ -26,45 +33,48 @@ export function FrameBar({
   profileWidthMm,
   role,
   highlightLength,
+  animDelay,
 }: FrameBarProps) {
-  const { position, quaternion, length, lengthMm, w } = useMemo(() => {
-    const [sx, sy, sz] = toThree(start[0], start[1], start[2]);
-    const [ex, ey, ez] = toThree(end[0], end[1], end[2]);
+  const meshRef = useRef<THREE.Mesh>(null!);
+  const startT = useRef<number | null>(null);
 
-    const startV = new THREE.Vector3(sx * MM, sy * MM, sz * MM);
-    const endV   = new THREE.Vector3(ex * MM, ey * MM, ez * MM);
+  // Compute geometry once
+  const [sx, sy, sz] = toThree(start[0], start[1], start[2]);
+  const [ex, ey, ez] = toThree(end[0], end[1], end[2]);
+  const startV = new THREE.Vector3(sx * MM, sy * MM, sz * MM);
+  const endV   = new THREE.Vector3(ex * MM, ey * MM, ez * MM);
+  const dir    = endV.clone().sub(startV);
+  const length = dir.length();
 
-    const dir = endV.clone().sub(startV);
-    const len = dir.length();
+  // Length in original mm for cut-list matching
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const dz = end[2] - start[2];
+  const lengthMm = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    // Length in original mm for cut-list matching (no scale applied)
-    const dx = end[0] - start[0];
-    const dy = end[1] - start[1];
-    const dz = end[2] - start[2];
-    const lenMm = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  const center = startV.clone().add(endV).multiplyScalar(0.5);
+  const quat   = new THREE.Quaternion();
+  if (length > 1e-9) {
+    quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  }
+  const w = profileWidthMm * MM;
 
-    const center = startV.clone().add(endV).multiplyScalar(0.5);
-
-    const quat = new THREE.Quaternion();
-    if (len > 1e-9) {
-      quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-    }
-
-    return {
-      position: center,
-      quaternion: quat,
-      length: len,
-      lengthMm: lenMm,
-      w: profileWidthMm * MM,
-    };
-  }, [start, end, profileWidthMm]);
+  // Build-order entrance animation
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const now = clock.getElapsedTime();
+    if (startT.current === null) startT.current = now + animDelay / 1000;
+    const t = Math.max(0, Math.min(1, (now - startT.current) / 0.22));
+    meshRef.current.scale.setScalar(easeOut(t));
+  });
 
   if (length < 1e-9) return null;
 
-  const lit = highlightLength !== null && Math.abs(lengthMm - highlightLength) < 0.5;
+  const lit =
+    highlightLength !== null && Math.abs(lengthMm - highlightLength) < 0.5;
 
   return (
-    <mesh position={position} quaternion={quaternion}>
+    <mesh ref={meshRef} position={center} quaternion={quat} scale={0}>
       <boxGeometry args={[w, length, w]} />
       <meshStandardMaterial
         color={lit ? "#FFD54F" : roleColor(role)}

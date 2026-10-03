@@ -20,24 +20,78 @@
   --dim:  #5A84C8;
 }
 
-/* ── Dark overrides ──────────────────────────────────────────────────────── */
+/* ── Dark token values (shared by media query and data-theme) ────────────── */
+.dark-tokens {
+  --bg:      #1A1A1E;
+  --surface: #242428;
+  --border:  #32323A;
+  --text:    #E6E3DD;
+  --muted:   #8A8880;
+
+  --accent:       #2D62B4;
+  --accent-hover: #3A72C4;
+  --accent-fg:    #FFFFFF;
+
+  --pass: #2A9E5A;
+  --warn: #C9921E;
+  --fail: #D44830;
+  --dim:  #6A9EC4;
+}
+
+/* ── Dark overrides — system preference (only when no explicit override) ─── */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg:      #1A1A1E;
     --surface: #242428;
     --border:  #32323A;
     --text:    #E6E3DD;
-    --muted:   #8A8880;   /* 4.95 : 1 on --bg */
+    --muted:   #8A8880;
 
     --accent:       #2D62B4;
     --accent-hover: #3A72C4;
     --accent-fg:    #FFFFFF;
 
     --pass: #2A9E5A;
-    --warn: #C9921E;   /* 5.79 : 1 on --surface */
+    --warn: #C9921E;
     --fail: #D44830;
     --dim:  #6A9EC4;
   }
+}
+
+/* ── Explicit dark override ──────────────────────────────────────────────── */
+html[data-theme="dark"] {
+  --bg:      #1A1A1E;
+  --surface: #242428;
+  --border:  #32323A;
+  --text:    #E6E3DD;
+  --muted:   #8A8880;
+
+  --accent:       #2D62B4;
+  --accent-hover: #3A72C4;
+  --accent-fg:    #FFFFFF;
+
+  --pass: #2A9E5A;
+  --warn: #C9921E;
+  --fail: #D44830;
+  --dim:  #6A9EC4;
+}
+
+/* ── Explicit light override (beats system dark) ─────────────────────────── */
+html[data-theme="light"] {
+  --bg:      #F4F1EC;
+  --surface: #FFFFFF;
+  --border:  #DDD9D3;
+  --text:    #1C1A17;
+  --muted:   #6B6560;
+
+  --accent:       #2D62B4;
+  --accent-hover: #245298;
+  --accent-fg:    #FFFFFF;
+
+  --pass: #1E7A45;
+  --warn: #8B5E0A;
+  --fail: #B83A25;
+  --dim:  #5A84C8;
 }
 
 /* ── Tailwind token map ──────────────────────────────────────────────────── */
