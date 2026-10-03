@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from pydantic import ValidationError
 
 from framegen.parser import ParseResult
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 # ── Client protocol (injectable for tests) ────────────────────────────────────
 
@@ -226,7 +226,7 @@ def parse(text: str) -> ParseResult:
     shelf_height = data.get("shelf_height_mm")
 
     try:
-        spec = FrameSpec.model_validate(
+        spec = TableSpec.model_validate(
             dict(
                 frame_type="table",
                 width_mm=data["width_mm"],

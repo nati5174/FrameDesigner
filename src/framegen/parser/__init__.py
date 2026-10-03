@@ -4,7 +4,7 @@ import re as _re
 from dataclasses import dataclass, field
 from typing import Literal
 
-from framegen.spec import FrameSpec
+from framegen.spec import ShelfUnitSpec, TableSpec
 
 Outcome = Literal["spec_valid", "spec_invalid", "not_parsed"]
 ParserUsed = Literal["rule_based", "llm", "none"]
@@ -13,7 +13,7 @@ ParserUsed = Literal["rule_based", "llm", "none"]
 @dataclass
 class ParseResult:
     outcome: Outcome
-    spec: FrameSpec | None  # set iff spec_valid
+    spec: TableSpec | ShelfUnitSpec | None  # set iff spec_valid
     error: str | None  # set iff spec_invalid; also set on not_parsed when LLM errored
     defaults_applied: list[str] = field(default_factory=list)
     parser_used: ParserUsed = "none"

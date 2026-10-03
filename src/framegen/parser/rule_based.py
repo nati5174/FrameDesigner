@@ -6,7 +6,7 @@ from typing import NamedTuple
 from pydantic import ValidationError
 
 from framegen.parser import ParseResult
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 # ── Regex helpers ─────────────────────────────────────────────────────────────
 
@@ -371,7 +371,7 @@ def parse(text: str) -> ParseResult:  # noqa: C901
         defaults.append("shelf_height_mm=300")
 
     try:
-        spec = FrameSpec.model_validate(
+        spec = TableSpec.model_validate(
             dict(
                 frame_type="table",
                 width_mm=width_mm,

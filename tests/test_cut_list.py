@@ -3,7 +3,7 @@ from __future__ import annotations
 from framegen.catalog import Profile
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 
 def _profile() -> Profile:
@@ -16,7 +16,7 @@ def _profile() -> Profile:
     )
 
 
-def _spec(**overrides: object) -> FrameSpec:
+def _spec(**overrides: object) -> TableSpec:
     defaults: dict[str, object] = dict(
         frame_type="table",
         width_mm=1500.0,
@@ -26,7 +26,7 @@ def _spec(**overrides: object) -> FrameSpec:
         target_load_kg=100.0,
     )
     defaults.update(overrides)
-    return FrameSpec.model_validate(defaults)
+    return TableSpec.model_validate(defaults)
 
 
 def test_no_shelf_row_counts_and_lengths() -> None:

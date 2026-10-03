@@ -4,7 +4,7 @@ import pytest
 
 from framegen.catalog import Profile
 from framegen.generate.table import Bar, generate_table
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 # W=1500, D=700, H=900, P=40 => rail lengths: 1500-80=1420, 700-80=620
 
@@ -19,7 +19,7 @@ def _profile(width: float = 40.0) -> Profile:
     )
 
 
-def _spec(**overrides: object) -> FrameSpec:
+def _spec(**overrides: object) -> TableSpec:
     defaults: dict[str, object] = dict(
         frame_type="table",
         width_mm=1500.0,
@@ -29,7 +29,7 @@ def _spec(**overrides: object) -> FrameSpec:
         target_load_kg=100.0,
     )
     defaults.update(overrides)
-    return FrameSpec.model_validate(defaults)
+    return TableSpec.model_validate(defaults)
 
 
 def _by_role(bars: list[Bar]) -> dict[str, list[float]]:
@@ -114,7 +114,7 @@ def test_depth_equal_to_2p_raises() -> None:
 
 
 def test_height_below_p_raises() -> None:
-    spec = FrameSpec.model_validate(
+    spec = TableSpec.model_validate(
         dict(
             frame_type="table",
             width_mm=200.0,
@@ -130,7 +130,7 @@ def test_height_below_p_raises() -> None:
 
 def test_shelf_below_p_raises() -> None:
     # shelf_height_mm=39 < P=40; passes FrameSpec (39 < 900) but fails generate
-    spec = FrameSpec.model_validate(
+    spec = TableSpec.model_validate(
         dict(
             frame_type="table",
             width_mm=1500.0,
@@ -147,7 +147,7 @@ def test_shelf_below_p_raises() -> None:
 
 def test_shelf_above_h_minus_p_raises() -> None:
     # shelf_height_mm=861 > H-P=860; passes FrameSpec (861 < 900) but fails generate
-    spec = FrameSpec.model_validate(
+    spec = TableSpec.model_validate(
         dict(
             frame_type="table",
             width_mm=1500.0,

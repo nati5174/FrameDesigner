@@ -6,7 +6,7 @@ import sys
 from framegen.catalog import load_catalog
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list, format_cut_list
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 
 def main() -> None:
@@ -36,7 +36,7 @@ def main() -> None:
 
     profile = catalog.profiles[args.profile_series]
 
-    spec = FrameSpec(
+    spec = TableSpec(
         frame_type="table",
         width_mm=args.width,
         depth_mm=args.depth,

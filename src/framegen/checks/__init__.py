@@ -5,7 +5,7 @@ from typing import Literal
 
 from framegen.catalog import Profile
 from framegen.generate import Bar
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 # Named constants — changing either requires approval (load-check formula).
 SAFETY_FACTOR: float = 3.0
@@ -156,7 +156,7 @@ def check_connectivity(bars: list[Bar], profile_width_mm: float) -> Connectivity
     )
 
 
-def check_load(bars: list[Bar], spec: FrameSpec, profile: Profile) -> LoadEstimate:
+def check_load(bars: list[Bar], spec: TableSpec, profile: Profile) -> LoadEstimate:
     """
     Estimate bending stress and deflection for every top rail.
 
@@ -283,7 +283,7 @@ def check_load(bars: list[Bar], spec: FrameSpec, profile: Profile) -> LoadEstima
     )
 
 
-def run_checks(bars: list[Bar], spec: FrameSpec, profile: Profile) -> CheckReport:
+def run_checks(bars: list[Bar], spec: TableSpec, profile: Profile) -> CheckReport:
     collision = check_collision(bars, profile.profile_width_mm)
     connectivity = check_connectivity(bars, profile.profile_width_mm)
     load = check_load(bars, spec, profile)

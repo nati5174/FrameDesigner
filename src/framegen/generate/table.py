@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from framegen.catalog import Profile
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 Role = Literal[
     "leg",
@@ -41,7 +41,7 @@ def _bar(profile_id: str, start: Point, end: Point, role: Role) -> Bar:
     return Bar(profile_id=profile_id, start=start, end=end, length_mm=length, role=role)
 
 
-def generate_table(spec: FrameSpec, profile: Profile) -> list[Bar]:
+def generate_table(spec: TableSpec, profile: Profile) -> list[Bar]:
     """Generate bars for a rectangular table frame.
 
     Coordinate convention:

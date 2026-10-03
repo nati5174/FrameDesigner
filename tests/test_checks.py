@@ -5,7 +5,7 @@ import pytest
 from framegen.catalog import Profile
 from framegen.checks import check_collision, check_connectivity, check_load
 from framegen.generate import Bar, Point, generate_table
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ def _bare_profile() -> Profile:
     )
 
 
-def _spec(**overrides: object) -> FrameSpec:
+def _spec(**overrides: object) -> TableSpec:
     defaults: dict[str, object] = dict(
         frame_type="table",
         width_mm=1500.0,
@@ -45,7 +45,7 @@ def _spec(**overrides: object) -> FrameSpec:
         target_load_kg=100.0,
     )
     defaults.update(overrides)
-    return FrameSpec.model_validate(defaults)
+    return TableSpec.model_validate(defaults)
 
 
 # ── Load estimate — worked example numbers ────────────────────────────────────

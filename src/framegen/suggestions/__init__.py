@@ -20,7 +20,7 @@ from typing import Literal
 from framegen.catalog import Profile
 from framegen.checks import CheckReport, run_checks
 from framegen.generate.table import generate_table
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 
 FixType = Literal[
     "reduce_span_width",
@@ -38,7 +38,7 @@ _GRAVITY = 9.81
 @dataclass(frozen=True)
 class FixCandidate:
     fix_type: FixType
-    spec: FrameSpec
+    spec: TableSpec
     check_report: CheckReport
     trade_off: str          # template text; rank.py may replace this
     resolves: Literal["distributed", "concentrated"]
@@ -67,7 +67,7 @@ def _l_max_concentrated(
     return min(l_stress, l_defl)
 
 
-def _verify(spec: FrameSpec, profile: Profile) -> CheckReport | None:
+def _verify(spec: TableSpec, profile: Profile) -> CheckReport | None:
     """Return CheckReport if generate succeeds, else None."""
     try:
         bars = generate_table(spec, profile)
@@ -82,7 +82,7 @@ def _conc_warns(report: CheckReport) -> bool:
 
 
 def suggest_fixes(
-    spec: FrameSpec,
+    spec: TableSpec,
     profile: Profile,
     check_report: CheckReport,
 ) -> list[FixCandidate]:

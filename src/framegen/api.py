@@ -13,7 +13,7 @@ from framegen.checks import run_checks
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
 from framegen.parser import parse as parser_parse
-from framegen.spec import FrameSpec
+from framegen.spec import TableSpec
 from framegen.suggestions import FixCandidate, suggest_fixes
 
 # Load .env once at startup; variables already in the environment take precedence.
@@ -54,7 +54,7 @@ def post_parse(req: ParseRequest) -> ParseResponse:
     llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
     result = parser_parse(req.text)
     spec_out: SpecOut | None = None
-    if result.spec is not None:
+    if isinstance(result.spec, TableSpec):
         spec_out = SpecOut(
             width_mm=result.spec.width_mm,
             depth_mm=result.spec.depth_mm,
@@ -92,7 +92,7 @@ def get_frame(
     profile = _CATALOG.profiles[series]
 
     try:
-        spec = FrameSpec.model_validate(
+        spec = TableSpec.model_validate(
             dict(
                 frame_type="table",
                 width_mm=width,
@@ -174,7 +174,7 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
     profile = _CATALOG.profiles[series]
 
     try:
-        spec = FrameSpec.model_validate(
+        spec = TableSpec.model_validate(
             dict(
                 frame_type="table",
                 width_mm=req.spec.width_mm,
