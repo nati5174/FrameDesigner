@@ -2,7 +2,8 @@
 Eval harness for the frame parser.
 
 Usage:
-    python -m evals.run [--config rule_based|llm|dispatcher] [--file dev|regression]
+    python -m evals.run [--config rule_based|llm|dispatcher]
+                       [--file dev|regression|test]
 
 Configs:
     rule_based  — rule-based parser only
@@ -12,6 +13,7 @@ Configs:
 Files:
     dev         — prompts_dev.json (default)
     regression  — prompts_regression.json
+    test        — prompts_test.json (user-written; not tracked in the repo)
 """
 from __future__ import annotations
 
@@ -25,9 +27,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
 # Ensure src/ is on the path when run as a script
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT / "src"))
+
+# Load .env once at startup; variables already in the environment take precedence.
+load_dotenv(override=False)
 
 from framegen.parser import ParseResult  # noqa: E402
 from framegen.parser import parse as _dispatcher_parse  # noqa: E402
@@ -236,12 +243,15 @@ def main() -> None:
     ap.add_argument("--config", default="dispatcher",
                     choices=["rule_based", "llm", "dispatcher", "all"])
     ap.add_argument("--file", default="dev",
-                    choices=["dev", "regression"])
+                    choices=["dev", "regression", "test"])
     args = ap.parse_args()
 
-    prompt_file = _EVALS_DIR / (
-        "prompts_dev.json" if args.file == "dev" else "prompts_regression.json"
-    )
+    _file_map = {
+        "dev": "prompts_dev.json",
+        "regression": "prompts_regression.json",
+        "test": "prompts_test.json",
+    }
+    prompt_file = _EVALS_DIR / _file_map[args.file]
     with open(prompt_file) as f:
         data = json.load(f)
     prompts: list[dict[str, Any]] = data["prompts"]

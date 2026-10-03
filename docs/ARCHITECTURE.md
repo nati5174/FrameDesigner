@@ -42,10 +42,10 @@ The LLM is used in exactly one place: text to `FrameSpec`. Everything else is pl
 | `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table) |
 | `checks/` | Collision, connectivity, load estimate | catalog | done |
 | `outputs/` | Cut list and BOM | catalog | cut list done; BOM not started |
-| `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher | spec | done (not wired into API) |
-| `api.py` | One endpoint: text or spec in, full result out | all of the above | partial (no parser) |
-| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression prompt sets; harness runs) |
-| `web/` | Prompt box, Three.js viewer, tables | api | done (viewer, cut list, checks) |
+| `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher | spec | done |
+| `api.py` | `/frame` and `/parse` endpoints | all of the above | done |
+| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression + test prompt sets; harness runs) |
+| `web/` | Parse input, Three.js viewer, tables | api | done (parse input, viewer, cut list, checks) |
 
 Dependencies point one way. `generate`, `checks`, and `outputs` must not import `parser`, so the core runs and tests without an API key.
 
@@ -149,7 +149,7 @@ If any of `youngs_modulus_mpa`, `yield_strength_mpa`, or `moment_of_inertia_mm4`
 |---|---|
 | `spec_valid` | Parsed cleanly; `ParseResult.spec` is set |
 | `spec_invalid` | Explicitly bad input; `ParseResult.error` explains why; LLM not tried |
-| `not_parsed` | Rule-based gave up; dispatcher passes to LLM |
+| `not_parsed` | Could not parse; `ParseResult.error` is set if the LLM errored (timeout, network, auth) |
 
 ### `ParseResult`
 
@@ -182,7 +182,7 @@ class ParseResult:
 
 ### LLM parser (`parser/llm.py`)
 
-- Calls `claude-haiku-4-5` with a structured system prompt
+- Calls `claude-haiku-4-5-20251001` with a structured system prompt
 - Asks for 5 fields; `frame_type` and `profile_series` are set in code
 - Strips code fences before JSON parse
 - Malformed response → 1 retry (includes error in retry prompt)
@@ -190,12 +190,15 @@ class ParseResult:
 - LLM may return `{"result": "insufficient_information"}` → `not_parsed`
 - LLM may return `{"result": "unsupported", "reason": "..."}` → `spec_invalid`
 - Client injectable via `llm.set_client()` for test mocking; no live calls in tests
+- 10-second timeout per call; network/timeout/auth errors → `not_parsed` with error message (never 500)
 
 ### Eval harness (`evals/run.py`)
 
 ```
-python -m evals.run --config rule_based|llm|dispatcher|all --file dev|regression
+python -m evals.run --config rule_based|llm|dispatcher|all --file dev|regression|test
 ```
+
+`prompts_test.json` is user-written and gitignored. Create it before running `--file test`.
 
 Reports: overall pass rate, per-group pass rate, per-field pass rate (W/D/H/S/L).
 Results committed to `evals/results/`. `prompts_test.json` is user-written and never read during parser work.
@@ -208,5 +211,5 @@ Results committed to `evals/results/`. `prompts_test.json` is user-written and n
 4. Cut list and BOM (cut list done)
 5. Prompt parser ✓
 6. Eval harness ✓
-7. Web page (viewer and checks done; parser not wired into UI yet)
+7. Web page ✓
 8. Release work (hosting, real catalogs, CAD export)

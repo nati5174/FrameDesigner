@@ -55,19 +55,21 @@ pip install -e ".[dev]"
 Then:
 
 ```
-pytest                      # tests (103 passing)
+pytest                      # tests (116 passing)
 ruff check . && mypy src    # lint and types
 python -m framegen --width 1500 --depth 700 --height 900             # cut list, no shelf
 python -m framegen --width 1500 --depth 700 --height 900 --shelf 300 # cut list, with shelf
 python -m evals.run --config rule_based --file dev        # parser eval, dev set
 python -m evals.run --config rule_based --file regression # parser eval, regression set
 python -m evals.run --config dispatcher --file dev        # full dispatcher (needs ANTHROPIC_API_KEY)
+uvicorn framegen.api:app    # local server; loads .env if present
 ```
 
-Not yet working:
+API endpoints:
 
 ```
-uvicorn framegen.api:app    # local server (parser not wired into API yet)
+GET  /frame   width, depth, height, shelf?, series?, load_kg?  → bars, cut list, check report
+POST /parse   {"text": "<500 chars>"}                          → outcome, spec, error, defaults_applied, parser_used, llm_available
 ```
 
 ## How to work

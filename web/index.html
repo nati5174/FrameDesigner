@@ -11,8 +11,15 @@
     h1 { font-size: 16px; font-weight: 600; color: #fff; }
     label { display: block; margin-bottom: 2px; color: #aaa; font-size: 12px; }
     input[type=number], input[type=text] { width: 100%; padding: 5px 8px; background: #2c2c2c; border: 1px solid #444; color: #ddd; border-radius: 3px; }
+    textarea { width: 100%; padding: 5px 8px; background: #2c2c2c; border: 1px solid #444; color: #ddd; border-radius: 3px; resize: vertical; font-size: 13px; font-family: inherit; }
     button { width: 100%; padding: 8px; background: #3a6fa8; border: none; color: #fff; border-radius: 3px; cursor: pointer; font-size: 14px; }
     button:hover { background: #4a7fb8; }
+    #parse-status { font-size: 12px; display: none; margin-top: 4px; }
+    .parse-ok   { color: #4ade80; }
+    .parse-err  { color: #f87171; }
+    .parse-warn { color: #fbbf24; }
+    #llm-note { font-size: 11px; color: #888; display: none; margin-top: 2px; }
+    #parse-divider { border: none; border-top: 1px solid #333; }
     #error { color: #f87171; font-size: 12px; display: none; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th { text-align: left; color: #888; border-bottom: 1px solid #333; padding: 4px 2px; }
@@ -36,6 +43,17 @@
 <div id="canvas-wrap"></div>
 <div id="panel">
   <h1>Frame Designer</h1>
+
+  <div id="parse-box">
+    <label>Describe your frame</label>
+    <textarea id="parse-text" rows="3" placeholder="workbench 1500 × 700 mm, 900 mm tall"></textarea>
+    <button type="button" id="parse-btn" style="margin-top:4px">Parse</button>
+    <p id="parse-status"></p>
+    <p id="llm-note"></p>
+  </div>
+
+  <hr id="parse-divider">
+
   <form id="form">
     <div>
       <label>Width (mm)</label>
@@ -301,6 +319,94 @@ document.getElementById('form').addEventListener('submit', async (ev) => {
   renderBars(data.bars);
   renderCutList(data.cut_list);
   renderChecks(data.check_report);
+});
+
+// ── Parse input ───────────────────────────────────────────────────────────────
+let _llmNoteShown = false;
+
+const _DEFAULT_LABELS = {
+  height_mm:       ['height',       'mm'],
+  target_load_kg:  ['load',         'kg'],
+  shelf_height_mm: ['shelf height', 'mm'],
+};
+
+function _showParseStatus(msg, cls) {
+  const el = document.getElementById('parse-status');
+  el.className = cls;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function _fillForm(spec) {
+  document.getElementById('width').value   = spec.width_mm;
+  document.getElementById('depth').value   = spec.depth_mm;
+  document.getElementById('height').value  = spec.height_mm;
+  document.getElementById('shelf').value   = spec.shelf_height_mm ?? '';
+  document.getElementById('series').value  = spec.profile_series;
+  document.getElementById('load_kg').value = spec.target_load_kg;
+}
+
+document.getElementById('parse-btn').addEventListener('click', async () => {
+  const text = document.getElementById('parse-text').value.trim();
+  if (!text) return;
+
+  document.getElementById('parse-status').style.display = 'none';
+
+  let resp;
+  try {
+    resp = await fetch('/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+  } catch (e) {
+    _showParseStatus('Network error: ' + e.message, 'parse-err');
+    return;
+  }
+
+  const data = await resp.json();
+  if (!resp.ok) {
+    _showParseStatus(data.detail ?? 'Error', 'parse-err');
+    return;
+  }
+
+  if (!data.llm_available && !_llmNoteShown) {
+    const noteEl = document.getElementById('llm-note');
+    noteEl.textContent = 'LLM unavailable — using rule-based parser only. Natural-language requests that the rules cannot handle will not be parsed.';
+    noteEl.style.display = 'block';
+    _llmNoteShown = true;
+  }
+
+  if (data.outcome === 'spec_valid') {
+    _fillForm(data.spec);
+    const parserLabel = data.parser_used === 'llm' ? 'LLM' : 'rules';
+    const parts = [`Parsed by ${parserLabel}.`];
+    if (data.defaults_applied.length > 0) {
+      const defs = data.defaults_applied.map(d => {
+        const eq = d.indexOf('=');
+        const key = d.slice(0, eq);
+        const val = d.slice(eq + 1);
+        const info = _DEFAULT_LABELS[key];
+        return info ? `${info[0]} defaulted to ${val} ${info[1]}` : `${key}=${val}`;
+      });
+      parts.push('Defaults: ' + defs.join(', ') + '.');
+    }
+    _showParseStatus(parts.join(' '), 'parse-ok');
+    document.getElementById('form').dispatchEvent(new Event('submit'));
+  } else if (data.outcome === 'spec_invalid') {
+    _showParseStatus(data.error ?? 'Invalid specification.', 'parse-err');
+  } else {
+    // not_parsed — LLM error or could not interpret
+    if (data.error) {
+      _showParseStatus(data.error, 'parse-err');
+    } else {
+      let msg = 'Could not interpret that request. Provide at least a width and depth with units — for example "workbench 1500 × 700 mm, 900 mm tall".';
+      if (!data.llm_available) {
+        msg += ' Natural-language requests need the LLM (set ANTHROPIC_API_KEY).';
+      }
+      _showParseStatus(msg, 'parse-warn');
+    }
+  }
 });
 
 // Auto-load on page open

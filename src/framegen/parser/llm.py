@@ -12,14 +12,10 @@ from framegen.spec import FrameSpec
 
 # ── Client protocol (injectable for tests) ────────────────────────────────────
 
-class _MessageParam(Protocol):
-    pass
-
-
 class _MessagesAPI(Protocol):
     def create(
         self, *, model: str, max_tokens: int, system: str,
-        messages: list[dict[str, str]]
+        messages: list[dict[str, str]], timeout: float
     ) -> Any:
         ...
 
@@ -31,16 +27,24 @@ class _AnthropicClient(Protocol):
 
 
 _client: _AnthropicClient | None = None
+# When True, _get_client() returns _client as-is (even if None) instead of
+# attempting auto-initialisation from the environment. Set by set_client().
+_client_set_explicitly: bool = False
 
 
 def set_client(client: _AnthropicClient | None) -> None:
-    """Override the Anthropic client — used in tests to inject a mock."""
-    global _client
+    """Override the Anthropic client — used in tests to inject a mock.
+    Passing None disables auto-init from the environment until the flag is reset.
+    """
+    global _client, _client_set_explicitly
     _client = client
+    _client_set_explicitly = True
 
 
 def _get_client() -> _AnthropicClient | None:
     global _client
+    if _client_set_explicitly:
+        return _client  # explicit override: respect None as "no client"
     if _client is not None:
         return _client
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -91,11 +95,17 @@ Rules:
 _MODEL = "claude-haiku-4-5-20251001"
 _MAX_TOKENS = 256
 _INPUT_CAP = 500
+_TIMEOUT = 10.0
 
 _FENCE_RE = re.compile(r'^```[a-z]*\n?|```$', re.MULTILINE)
 
 _NOT_PARSED = ParseResult(
     outcome="not_parsed", spec=None, error=None, parser_used="llm"
+)
+
+_LLM_ERROR = (
+    "The LLM could not be reached (timeout or network error). "
+    "Try again, or enter dimensions directly in the form."
 )
 
 
@@ -110,6 +120,7 @@ def _call(client: _AnthropicClient, user_text: str, extra_system: str = "") -> s
         max_tokens=_MAX_TOKENS,
         system=system,
         messages=[{"role": "user", "content": user_text}],
+        timeout=_TIMEOUT,
     )
     return resp.content[0].text  # type: ignore[no-any-return]
 
@@ -148,6 +159,8 @@ def parse(text: str) -> ParseResult:
     Retry logic:
       - Malformed / missing-field response → 1 retry including the error.
       - FrameSpec validation failure → spec_invalid immediately, no retry.
+    Error handling:
+      - Network / timeout / auth errors → not_parsed with error message.
     """
     client = _get_client()
     if client is None:
@@ -156,7 +169,16 @@ def parse(text: str) -> ParseResult:
     user_text = text[:_INPUT_CAP]
 
     # First attempt
-    raw = _call(client, user_text)
+    try:
+        raw = _call(client, user_text)
+    except Exception:
+        return ParseResult(
+            outcome="not_parsed",
+            spec=None,
+            error=_LLM_ERROR,
+            parser_used="llm",
+        )
+
     result = _interpret(raw)
 
     # Retry once on malformed/missing-field response
@@ -165,7 +187,15 @@ def parse(text: str) -> ParseResult:
             "\n\nPrevious response was not valid JSON or was missing required fields. "
             f"Raw response was: {raw!r}. Please return only a valid JSON object."
         )
-        raw = _call(client, user_text, extra_system=retry_system)
+        try:
+            raw = _call(client, user_text, extra_system=retry_system)
+        except Exception:
+            return ParseResult(
+                outcome="not_parsed",
+                spec=None,
+                error=_LLM_ERROR,
+                parser_used="llm",
+            )
         result = _interpret(raw)
         if result.outcome == "not_parsed":
             return _NOT_PARSED

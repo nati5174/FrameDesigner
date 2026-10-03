@@ -216,10 +216,11 @@ class TestRuleBasedRejections:
 class TestLLMParser:
     def setup_method(self) -> None:
         self._orig = llm_mod._client
-        llm_mod._client = None
+        llm_mod.set_client(None)  # disables auto-init from env for this test
 
     def teardown_method(self) -> None:
         llm_mod._client = self._orig
+        llm_mod._client_set_explicitly = False
 
     def test_valid_response(self) -> None:
         mock = _mock_llm({"width_mm": 1500, "depth_mm": 700, "height_mm": 900,
@@ -311,6 +312,7 @@ class TestDispatcher:
 
     def teardown_method(self) -> None:
         llm_mod._client = self._orig
+        llm_mod._client_set_explicitly = False
 
     def test_rule_based_wins_without_llm(self) -> None:
         llm_mod.set_client(None)

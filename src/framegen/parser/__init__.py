@@ -14,7 +14,7 @@ ParserUsed = Literal["rule_based", "llm", "none"]
 class ParseResult:
     outcome: Outcome
     spec: FrameSpec | None  # set iff spec_valid
-    error: str | None  # set iff spec_invalid
+    error: str | None  # set iff spec_invalid; also set on not_parsed when LLM errored
     defaults_applied: list[str] = field(default_factory=list)
     parser_used: ParserUsed = "none"
 
