@@ -4,11 +4,14 @@ Fix suggestions for frames that fail the load check.
 This module is pure code — it never imports suggestions.rank or any LLM code.
 The API layer decides whether to call rank.py based on key availability.
 
-Trigger:
+Table triggers:
   - distributed case fails  → target distributed pass
   - only concentrated warns → target concentrated pass
 
-Each candidate is verified by running generate_table + run_checks.
+Shelf unit triggers:
+  - any level rail fails   → reduce_load_per_level or centre_legs
+
+Each candidate is verified by re-running generate + run_checks.
 Only verified passes are returned. At most three candidates.
 """
 from __future__ import annotations
@@ -19,28 +22,29 @@ from typing import Literal
 
 from framegen.catalog import Profile
 from framegen.checks import CheckReport, run_checks
+from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
-from framegen.spec import TableSpec
+from framegen.spec import ShelfUnitSpec, TableSpec
 
 FixType = Literal[
     "reduce_span_width",
     "reduce_span_depth",
     "reduce_load",
     "centre_legs",
+    "reduce_load_per_level",
 ]
 
-# Rounding increments
-_SPAN_STEP_MM = 10      # round candidate dimensions down to nearest 10 mm
-_LOAD_STEP_KG = 5       # round candidate load down to nearest 5 kg
+_SPAN_STEP_MM = 10
+_LOAD_STEP_KG = 5
 _GRAVITY = 9.81
 
 
 @dataclass(frozen=True)
 class FixCandidate:
     fix_type: FixType
-    spec: TableSpec
+    spec: TableSpec | ShelfUnitSpec
     check_report: CheckReport
-    trade_off: str          # template text; rank.py may replace this
+    trade_off: str
     resolves: Literal["distributed", "concentrated"]
     concentrated_warning_remains: bool
 
@@ -52,7 +56,6 @@ def _floor_to(value: float, step: float) -> float:
 def _l_max_distributed(
     E: float, I_mm4: float, S: float, s_allow: float, F: float
 ) -> float:
-    """Largest span (mm) at which the distributed case just passes."""
     l_stress = 16.0 * S * s_allow / F
     l_defl = math.sqrt(768.0 * E * I_mm4 / (1500.0 * F))
     return min(l_stress, l_defl)
@@ -61,16 +64,22 @@ def _l_max_distributed(
 def _l_max_concentrated(
     E: float, I_mm4: float, S: float, s_allow: float, F: float
 ) -> float:
-    """Largest span (mm) at which the concentrated case just passes."""
     l_stress = 4.0 * S * s_allow / F
     l_defl = math.sqrt(48.0 * E * I_mm4 / (300.0 * F))
     return min(l_stress, l_defl)
 
 
-def _verify(spec: TableSpec, profile: Profile) -> CheckReport | None:
-    """Return CheckReport if generate succeeds, else None."""
+def _verify_table(spec: TableSpec, profile: Profile) -> CheckReport | None:
     try:
         bars = generate_table(spec, profile)
+    except ValueError:
+        return None
+    return run_checks(bars, spec, profile)
+
+
+def _verify_shelf(spec: ShelfUnitSpec, profile: Profile) -> CheckReport | None:
+    try:
+        bars = generate_shelf_unit(spec, profile)
     except ValueError:
         return None
     return run_checks(bars, spec, profile)
@@ -81,22 +90,17 @@ def _conc_warns(report: CheckReport) -> bool:
     return gov is not None and not gov.concentrated.passed
 
 
-def suggest_fixes(
+# ── Table suggestions ─────────────────────────────────────────────────────────
+
+def _suggest_table(
     spec: TableSpec,
     profile: Profile,
     check_report: CheckReport,
 ) -> list[FixCandidate]:
-    """
-    Return up to three verified fix candidates.
-
-    Called only when check_report.load.passed is False OR the concentrated
-    case warns. Returns [] when the frame is fully healthy.
-    """
     load = check_report.load
     if load.status != "evaluated":
         return []
 
-    # Decide target
     dist_fails = not load.passed
     conc_warns = _conc_warns(check_report)
     if not dist_fails and not conc_warns:
@@ -123,18 +127,18 @@ def suggest_fixes(
 
     candidates: list[FixCandidate] = []
 
-    # ── Fix A: reduce span ────────────────────────────────────────────────────
+    # Fix A: reduce span
     if resolves == "distributed":
         l_max = _l_max_distributed(E, I_mm4, S, s_allow, F)
     else:
         l_max = _l_max_concentrated(E, I_mm4, S, s_allow, F)
 
-    role = gov.role  # "top_rail_width" or "top_rail_depth"
+    role = gov.role
     if role == "top_rail_width":
         new_dim = _floor_to(l_max + 2 * P, _SPAN_STEP_MM)
         if new_dim < spec.width_mm and new_dim > 3 * P:
             candidate_spec = spec.model_copy(update={"width_mm": new_dim})
-            report = _verify(candidate_spec, profile)
+            report = _verify_table(candidate_spec, profile)
             if report is not None and (
                 (resolves == "distributed" and report.load.passed) or
                 (resolves == "concentrated" and not _conc_warns(report))
@@ -154,7 +158,7 @@ def suggest_fixes(
         new_dim = _floor_to(l_max + 2 * P, _SPAN_STEP_MM)
         if new_dim < spec.depth_mm:
             candidate_spec = spec.model_copy(update={"depth_mm": new_dim})
-            report = _verify(candidate_spec, profile)
+            report = _verify_table(candidate_spec, profile)
             if report is not None and (
                 (resolves == "distributed" and report.load.passed) or
                 (resolves == "concentrated" and not _conc_warns(report))
@@ -171,7 +175,7 @@ def suggest_fixes(
                     concentrated_warning_remains=_conc_warns(report),
                 ))
 
-    # ── Fix B: reduce load ────────────────────────────────────────────────────
+    # Fix B: reduce load
     u = gov.utilisation if resolves == "distributed" else max(
         gov.concentrated.bending_stress_mpa / gov.allowable_stress_mpa,
         gov.concentrated.deflection_mm / gov.deflection_limit_mm,
@@ -180,7 +184,7 @@ def suggest_fixes(
         new_load = _floor_to(spec.target_load_kg / u, _LOAD_STEP_KG)
         if new_load > 0 and new_load < spec.target_load_kg:
             candidate_spec = spec.model_copy(update={"target_load_kg": new_load})
-            report = _verify(candidate_spec, profile)
+            report = _verify_table(candidate_spec, profile)
             if report is not None and (
                 (resolves == "distributed" and report.load.passed) or
                 (resolves == "concentrated" and not _conc_warns(report))
@@ -197,10 +201,10 @@ def suggest_fixes(
                     concentrated_warning_remains=_conc_warns(report),
                 ))
 
-    # ── Fix C: centre legs ────────────────────────────────────────────────────
+    # Fix C: centre legs
     if not spec.centre_legs and spec.width_mm > 3 * P:
         candidate_spec = spec.model_copy(update={"centre_legs": True})
-        report = _verify(candidate_spec, profile)
+        report = _verify_table(candidate_spec, profile)
         if report is not None and (
             (resolves == "distributed" and report.load.passed) or
             (resolves == "concentrated" and not _conc_warns(report))
@@ -215,3 +219,86 @@ def suggest_fixes(
             ))
 
     return candidates[:3]
+
+
+# ── Shelf unit suggestions ────────────────────────────────────────────────────
+
+def _suggest_shelf(
+    spec: ShelfUnitSpec,
+    profile: Profile,
+    check_report: CheckReport,
+) -> list[FixCandidate]:
+    load = check_report.load
+    if load.status != "evaluated":
+        return []
+    leg = check_report.leg_check
+    if load.passed and (leg is None or leg.passed):
+        return []
+
+    gov = load.governing_rail
+    if not load.passed and gov is None:
+        return []
+
+    E = profile.youngs_modulus_mpa
+    sy = profile.yield_strength_mpa
+    I_mm4 = profile.moment_of_inertia_mm4
+    if E is None or sy is None or I_mm4 is None:
+        return []
+
+    candidates: list[FixCandidate] = []
+
+    # Fix A: reduce load per level
+    if not load.passed and gov is not None:
+        u = gov.utilisation
+        if u > 0:
+            new_load = _floor_to(spec.load_per_level_kg / u, _LOAD_STEP_KG)
+            if new_load > 0 and new_load < spec.load_per_level_kg:
+                candidate_spec = spec.model_copy(
+                    update={"load_per_level_kg": new_load}
+                )
+                report = _verify_shelf(candidate_spec, profile)
+                if report is not None and report.load.passed:
+                    candidates.append(FixCandidate(
+                        fix_type="reduce_load_per_level",
+                        spec=candidate_spec,
+                        check_report=report,
+                        trade_off=(
+                            f"Reduce the load per level to {new_load:.0f} kg"
+                            f" (from {spec.load_per_level_kg:.0f} kg)."
+                        ),
+                        resolves="distributed",
+                        concentrated_warning_remains=_conc_warns(report),
+                    ))
+
+    # Fix B: centre legs (halves width span)
+    P = profile.profile_width_mm
+    if not spec.centre_legs and spec.width_mm > 3 * P:
+        candidate_spec = spec.model_copy(update={"centre_legs": True})
+        report = _verify_shelf(candidate_spec, profile)
+        if report is not None and report.load.passed:
+            candidates.append(FixCandidate(
+                fix_type="centre_legs",
+                spec=candidate_spec,
+                check_report=report,
+                trade_off="Add a centre pair of legs, halving the width span.",
+                resolves="distributed",
+                concentrated_warning_remains=_conc_warns(report),
+            ))
+
+    return candidates[:3]
+
+
+# ── Public entry point ────────────────────────────────────────────────────────
+
+def suggest_fixes(
+    spec: TableSpec | ShelfUnitSpec,
+    profile: Profile,
+    check_report: CheckReport,
+) -> list[FixCandidate]:
+    """
+    Return up to three verified fix candidates for the given spec and report.
+    Returns [] when the frame is fully healthy or when catalog data is missing.
+    """
+    if isinstance(spec, ShelfUnitSpec):
+        return _suggest_shelf(spec, profile, check_report)
+    return _suggest_table(spec, profile, check_report)

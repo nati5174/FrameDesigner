@@ -10,13 +10,13 @@ from pydantic import BaseModel, Field, ValidationError
 
 from framegen.catalog import load_catalog
 from framegen.checks import run_checks
+from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
 from framegen.parser import parse as parser_parse
-from framegen.spec import TableSpec
+from framegen.spec import ShelfUnitSpec, TableSpec
 from framegen.suggestions import FixCandidate, suggest_fixes
 
-# Load .env once at startup; variables already in the environment take precedence.
 load_dotenv(override=False)
 
 _CATALOG = load_catalog()
@@ -31,13 +31,19 @@ class ParseRequest(BaseModel):
 
 
 class SpecOut(BaseModel):
+    """Unified spec representation for both tables and shelf units."""
+    frame_type: Literal["table", "shelf_unit"] = "table"
     width_mm: float
     depth_mm: float
     height_mm: float
-    shelf_height_mm: float | None
     profile_series: str
-    target_load_kg: float
+    # Table-only fields
+    shelf_height_mm: float | None = None
+    target_load_kg: float | None = None
     centre_legs: bool = False
+    # Shelf-unit-only fields
+    level_heights_mm: list[float] | None = None
+    load_per_level_kg: float | None = None
 
 
 class ParseResponse(BaseModel):
@@ -49,21 +55,37 @@ class ParseResponse(BaseModel):
     llm_available: bool
 
 
+def _spec_to_out(spec: TableSpec | ShelfUnitSpec) -> SpecOut:
+    if isinstance(spec, ShelfUnitSpec):
+        return SpecOut(
+            frame_type="shelf_unit",
+            width_mm=spec.width_mm,
+            depth_mm=spec.depth_mm,
+            height_mm=spec.height_mm,
+            profile_series=spec.profile_series,
+            level_heights_mm=spec.level_heights_mm,
+            load_per_level_kg=spec.load_per_level_kg,
+            centre_legs=spec.centre_legs,
+        )
+    return SpecOut(
+        frame_type="table",
+        width_mm=spec.width_mm,
+        depth_mm=spec.depth_mm,
+        height_mm=spec.height_mm,
+        shelf_height_mm=spec.shelf_height_mm,
+        profile_series=spec.profile_series,
+        target_load_kg=spec.target_load_kg,
+        centre_legs=spec.centre_legs,
+    )
+
+
 @app.post("/parse")
 def post_parse(req: ParseRequest) -> ParseResponse:
     llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
     result = parser_parse(req.text)
     spec_out: SpecOut | None = None
-    if isinstance(result.spec, TableSpec):
-        spec_out = SpecOut(
-            width_mm=result.spec.width_mm,
-            depth_mm=result.spec.depth_mm,
-            height_mm=result.spec.height_mm,
-            shelf_height_mm=result.spec.shelf_height_mm,
-            profile_series=result.spec.profile_series,
-            target_load_kg=result.spec.target_load_kg,
-            centre_legs=result.spec.centre_legs,
-        )
+    if result.spec is not None:
+        spec_out = _spec_to_out(result.spec)
     return ParseResponse(
         outcome=result.outcome,
         spec=spec_out,
@@ -74,41 +96,23 @@ def post_parse(req: ParseRequest) -> ParseResponse:
     )
 
 
-# ── /frame ────────────────────────────────────────────────────────────────────
+# ── Shared frame-generation logic ─────────────────────────────────────────────
 
-@app.get("/frame")
-def get_frame(
-    width: float = Query(...),
-    depth: float = Query(...),
-    height: float = Query(...),
-    shelf: float | None = Query(default=None),
-    series: str = Query(default="40-series"),
-    load_kg: float = Query(default=100.0),
-    centre_legs: bool = Query(default=False),
+def _run_frame(
+    spec: TableSpec | ShelfUnitSpec,
+    profile_series: str,
 ) -> dict[str, Any]:
-    if series not in _CATALOG.profiles:
-        raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
-
-    profile = _CATALOG.profiles[series]
-
-    try:
-        spec = TableSpec.model_validate(
-            dict(
-                frame_type="table",
-                width_mm=width,
-                depth_mm=depth,
-                height_mm=height,
-                profile_series=series,
-                target_load_kg=load_kg,
-                shelf_height_mm=shelf,
-                centre_legs=centre_legs,
-            )
+    if profile_series not in _CATALOG.profiles:
+        raise HTTPException(
+            status_code=400, detail=f"unknown series: {profile_series!r}"
         )
-    except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    profile = _CATALOG.profiles[profile_series]
 
     try:
-        bars = generate_table(spec, profile)
+        if isinstance(spec, ShelfUnitSpec):
+            bars = generate_shelf_unit(spec, profile)
+        else:
+            bars = generate_table(spec, profile)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -140,23 +144,78 @@ def get_frame(
     }
 
 
-def _serialise_candidate(c: FixCandidate) -> dict[str, Any]:
-    return {
-        "fix_type": c.fix_type,
-        "spec": {
-            "width_mm": c.spec.width_mm,
-            "depth_mm": c.spec.depth_mm,
-            "height_mm": c.spec.height_mm,
-            "shelf_height_mm": c.spec.shelf_height_mm,
-            "profile_series": c.spec.profile_series,
-            "target_load_kg": c.spec.target_load_kg,
-            "centre_legs": c.spec.centre_legs,
-        },
-        "check_report": dataclasses.asdict(c.check_report),
-        "trade_off": c.trade_off,
-        "resolves": c.resolves,
-        "concentrated_warning_remains": c.concentrated_warning_remains,
-    }
+# ── GET /frame (table only — kept for backwards compatibility) ────────────────
+
+@app.get("/frame")
+def get_frame(
+    width: float = Query(...),
+    depth: float = Query(...),
+    height: float = Query(...),
+    shelf: float | None = Query(default=None),
+    series: str = Query(default="40-series"),
+    load_kg: float = Query(default=100.0),
+    centre_legs: bool = Query(default=False),
+) -> dict[str, Any]:
+    try:
+        spec = TableSpec.model_validate(
+            dict(
+                frame_type="table",
+                width_mm=width,
+                depth_mm=depth,
+                height_mm=height,
+                profile_series=series,
+                target_load_kg=load_kg,
+                shelf_height_mm=shelf,
+                centre_legs=centre_legs,
+            )
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _run_frame(spec, series)
+
+
+# ── POST /frame (both frame types) ───────────────────────────────────────────
+
+class PostFrameRequest(BaseModel):
+    spec: SpecOut
+
+
+@app.post("/frame")
+def post_frame(req: PostFrameRequest) -> dict[str, Any]:
+    s = req.spec
+    series = s.profile_series
+    try:
+        if s.frame_type == "shelf_unit":
+            spec: TableSpec | ShelfUnitSpec = ShelfUnitSpec.model_validate(
+                dict(
+                    frame_type="shelf_unit",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    level_heights_mm=s.level_heights_mm or [],
+                    load_per_level_kg=s.load_per_level_kg or 30.0,
+                    centre_legs=s.centre_legs,
+                )
+            )
+        else:
+            spec = TableSpec.model_validate(
+                dict(
+                    frame_type="table",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    target_load_kg=s.target_load_kg or 100.0,
+                    shelf_height_mm=s.shelf_height_mm,
+                    centre_legs=s.centre_legs,
+                )
+            )
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _run_frame(spec, series)
 
 
 # ── /suggest ──────────────────────────────────────────────────────────────────
@@ -173,24 +232,42 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
     profile = _CATALOG.profiles[series]
 
+    s = req.spec
     try:
-        spec = TableSpec.model_validate(
-            dict(
-                frame_type="table",
-                width_mm=req.spec.width_mm,
-                depth_mm=req.spec.depth_mm,
-                height_mm=req.spec.height_mm,
-                profile_series=series,
-                target_load_kg=req.spec.target_load_kg,
-                shelf_height_mm=req.spec.shelf_height_mm,
-                centre_legs=req.spec.centre_legs,
+        if s.frame_type == "shelf_unit":
+            spec: TableSpec | ShelfUnitSpec = ShelfUnitSpec.model_validate(
+                dict(
+                    frame_type="shelf_unit",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    level_heights_mm=s.level_heights_mm or [],
+                    load_per_level_kg=s.load_per_level_kg or 30.0,
+                    centre_legs=s.centre_legs,
+                )
             )
-        )
+        else:
+            spec = TableSpec.model_validate(
+                dict(
+                    frame_type="table",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    target_load_kg=s.target_load_kg or 100.0,
+                    shelf_height_mm=s.shelf_height_mm,
+                    centre_legs=s.centre_legs,
+                )
+            )
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        bars = generate_table(spec, profile)
+        if isinstance(spec, ShelfUnitSpec):
+            bars = generate_shelf_unit(spec, profile)
+        else:
+            bars = generate_table(spec, profile)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -203,6 +280,41 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
             from framegen.suggestions.rank import rank_and_describe  # noqa: PLC0415
             serialised = rank_and_describe(serialised, req.original_request)
         except Exception:
-            pass  # fall back to template text
+            pass
 
     return {"suggestions": serialised}
+
+
+def _serialise_candidate(c: FixCandidate) -> dict[str, Any]:
+    spec = c.spec
+    spec_dict: dict[str, Any]
+    if isinstance(spec, ShelfUnitSpec):
+        spec_dict = {
+            "frame_type": "shelf_unit",
+            "width_mm": spec.width_mm,
+            "depth_mm": spec.depth_mm,
+            "height_mm": spec.height_mm,
+            "profile_series": spec.profile_series,
+            "level_heights_mm": spec.level_heights_mm,
+            "load_per_level_kg": spec.load_per_level_kg,
+            "centre_legs": spec.centre_legs,
+        }
+    else:
+        spec_dict = {
+            "frame_type": "table",
+            "width_mm": spec.width_mm,
+            "depth_mm": spec.depth_mm,
+            "height_mm": spec.height_mm,
+            "shelf_height_mm": spec.shelf_height_mm,
+            "profile_series": spec.profile_series,
+            "target_load_kg": spec.target_load_kg,
+            "centre_legs": spec.centre_legs,
+        }
+    return {
+        "fix_type": c.fix_type,
+        "spec": spec_dict,
+        "check_report": dataclasses.asdict(c.check_report),
+        "trade_off": c.trade_off,
+        "resolves": c.resolves,
+        "concentrated_warning_remains": c.concentrated_warning_remains,
+    }
