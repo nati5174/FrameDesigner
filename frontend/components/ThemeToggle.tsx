@@ -14,15 +14,16 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "system";
+    const saved = localStorage.getItem("theme") as Theme | null;
+    return saved === "light" || saved === "dark" ? saved : "system";
+  });
 
-  // Restore saved preference on mount
+  // Apply the initial saved theme to the DOM on mount (no setState here)
   useEffect(() => {
     const saved = localStorage.getItem("theme") as Theme | null;
-    if (saved === "light" || saved === "dark") {
-      setTheme(saved);
-      applyTheme(saved);
-    }
+    if (saved === "light" || saved === "dark") applyTheme(saved);
   }, []);
 
   function toggle() {

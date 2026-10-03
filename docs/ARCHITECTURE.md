@@ -54,7 +54,7 @@ The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `
 | `suggestions/rank.py` | Rank candidates and write one sentence per fix; only imported by `api.py` | suggestions, anthropic SDK | done |
 | `api.py` | `/frame`, `/parse`, and `/suggest` endpoints | all of the above | done |
 | `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression + test prompt sets; harness runs) |
-| `web/` | Parse input, Three.js viewer, tables | api | done (parse input, viewer, cut list, checks) |
+| `frontend/` | Next.js App Router UI; parse input, 3D viewer, cut list, checks, suggestions | api | done |
 
 Dependencies point one way. `generate`, `checks`, `outputs`, and `suggestions/__init__.py` must not import `parser` or `suggestions/rank.py`, so the core runs and tests without an API key.
 
@@ -265,7 +265,7 @@ Results committed to `evals/results/`. `prompts_test.json` is user-written and n
 4. Cut list and BOM (cut list done)
 5. Prompt parser ✓
 6. Eval harness ✓
-7. Web page ✓
+7. Frontend (Next.js) ✓
 8. Suggestions module ✓
    a. suggestions/__init__.py (pure code) ✓
    b. FrameSpec.centre_legs + generator extension ✓

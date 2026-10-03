@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { FixCandidate, FrameResponse, FrameSpec } from "@/lib/types";
+import type { FrameResponse, FrameSpec } from "@/lib/types";
 import { PromptBar } from "@/components/PromptBar";
 import { SidePanel } from "@/components/panel/SidePanel";
 import { EmptyState } from "@/components/EmptyState";

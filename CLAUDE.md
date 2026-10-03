@@ -20,7 +20,7 @@ These are product decisions, not suggestions. Changing any of them needs approva
 
 - Backend: Python 3.11+, FastAPI, Pydantic v2
 - Backend tests and checks: pytest, ruff, mypy
-- Frontend: Next.js 16 App Router, TypeScript, Tailwind CSS v4, Three.js / R3F (Stage B)
+- Frontend: Next.js 16 App Router, TypeScript, Tailwind CSS v4, React Three Fiber / drei
 - Frontend tests: Vitest + React Testing Library (run from `frontend/`)
 - LLM: called only from `src/framegen/parser/` and `src/framegen/suggestions/rank.py`;
   API key from the environment, never from a file in the repo
@@ -42,11 +42,10 @@ src/framegen/
   suggestions/ fix candidates (pure code) + LLM ranker
   api.py       FastAPI app
 evals/         benchmark prompts, scoring, logged runs
-web/           legacy viewer page (Three.js, no framework)
-frontend/      Next.js app (current UI)
+frontend/      Next.js 16 app (current UI)
   app/         App Router pages and layout
-  components/  React components
-  hooks/       API hooks (useFrameApi, useParseApi, useSuggestApi, useUndo)
+  components/  React components (viewer, panel, prompt bar, theme toggle)
+  hooks/       useFrameApi, useParseApi, useSuggestApi, useUndo
   lib/         types, examples, coordinates, theme helpers
   __tests__/   Vitest unit tests
 tests/         Python backend tests
@@ -85,8 +84,12 @@ Frontend (from `frontend/`):
 ```
 npm run dev     # dev server on :3000, proxies /frame /parse /suggest to :8080
 npm test        # Vitest unit tests
-npm run lint    # ESLint
+npm run lint    # ESLint (eslint .)
+npx tsc --noEmit  # TypeScript type check
+npm run build   # production build (also type-checks)
 ```
+
+Both servers must be running for the UI to work: `uvicorn framegen.api:app` on :8080 and `npm run dev` on :3000.
 
 API endpoints:
 

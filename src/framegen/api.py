@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import dataclasses
 import os
-from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
 from framegen.catalog import load_catalog
@@ -22,8 +20,6 @@ from framegen.suggestions import FixCandidate, suggest_fixes
 load_dotenv(override=False)
 
 _CATALOG = load_catalog()
-_REPO_ROOT = Path(__file__).parent.parent.parent
-_WEB_DIR = _REPO_ROOT / "web"
 
 app = FastAPI()
 
@@ -210,6 +206,3 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
             pass  # fall back to template text
 
     return {"suggestions": serialised}
-
-
-app.mount("/", StaticFiles(directory=str(_WEB_DIR), html=True), name="web")

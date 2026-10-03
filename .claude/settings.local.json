@@ -16,7 +16,9 @@
       "Bash(npm test:*)",
       "Bash(NODE_OPTIONS=\"--experimental-require-module\" npx vitest:*)",
       "Bash(uvicorn framegen.api:app:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(./node_modules/.bin/next lint:*)",
+      "Bash(./node_modules/.bin/eslint .:*)"
     ]
   }
 }

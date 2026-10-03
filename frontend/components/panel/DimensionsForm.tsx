@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FrameSpec } from "@/lib/types";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -66,11 +66,13 @@ const INPUT =
 
 export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProps) {
   const [draft, setDraft] = useState<Draft>(toDraft(spec));
+  const [prevSpec, setPrevSpec] = useState(spec);
 
   // Keep draft in sync when spec changes externally (e.g. from PromptBar or Apply)
-  useEffect(() => {
+  if (prevSpec !== spec) {
+    setPrevSpec(spec);
     setDraft(toDraft(spec));
-  }, [spec]);
+  }
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
