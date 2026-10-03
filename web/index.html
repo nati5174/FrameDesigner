@@ -37,6 +37,12 @@
     summary:hover { color: #888; }
     details ul { font-size: 11px; color: #666; padding-left: 14px; margin-top: 4px; line-height: 1.6; }
     .check-line { margin: 3px 0; }
+    #suggestions-section { display: none; margin-top: 4px; }
+    .suggestion-card { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 8px; margin-top: 6px; font-size: 12px; }
+    .suggestion-card p { margin: 0 0 6px; color: #ccc; line-height: 1.5; }
+    .suggestion-card .fix-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .suggestion-card button { width: auto; padding: 4px 10px; font-size: 12px; background: #2e5a8a; }
+    .suggestion-card button:hover { background: #3a6fa8; }
   </style>
 </head>
 <body>
@@ -79,6 +85,10 @@
       <label>Target load (kg)</label>
       <input type="number" id="load_kg" value="100" min="1" required>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <input type="checkbox" id="centre_legs" style="width:auto;margin:0">
+      <label style="margin:0;color:#aaa;font-size:12px">Centre legs (splits width span)</label>
+    </div>
     <button type="submit">Generate</button>
     <p id="error"></p>
   </form>
@@ -99,6 +109,11 @@
     <p id="load-conc-warning" class="check-warn" style="display:none"></p>
     <p id="collision-line" class="check-line"></p>
     <p id="connectivity-line" class="check-line"></p>
+    <div id="suggestions-section">
+      <h1 style="margin-top:8px">Suggestions</h1>
+      <div id="suggestions-list"></div>
+    </div>
+
     <details>
       <summary>Not covered by this estimate ▸</summary>
       <ul>
@@ -284,6 +299,40 @@ function renderChecks(cr) {
   document.getElementById('checks-section').style.display = 'block';
 }
 
+// ── Suggestions ───────────────────────────────────────────────────────────────
+const _FIX_LABEL = {
+  reduce_span_width:  'Narrow the frame',
+  reduce_span_depth:  'Reduce depth',
+  reduce_load:        'Reduce target load',
+  centre_legs:        'Add centre legs',
+};
+
+function renderSuggestions(suggestions) {
+  const section = document.getElementById('suggestions-section');
+  const list = document.getElementById('suggestions-list');
+  list.innerHTML = '';
+  if (!suggestions.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  for (const s of suggestions) {
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    const resolveNote = s.resolves === 'concentrated'
+      ? ' (resolves concentrated-load warning)'
+      : '';
+    const warnNote = s.concentrated_warning_remains
+      ? ' Concentrated-load warning remains.' : '';
+    card.innerHTML = `
+      <p class="fix-label">${_FIX_LABEL[s.fix_type] ?? s.fix_type}${resolveNote}</p>
+      <p>${s.trade_off}${warnNote}</p>
+      <button type="button">Apply</button>`;
+    card.querySelector('button').addEventListener('click', () => {
+      _fillForm(s.spec);
+      document.getElementById('form').dispatchEvent(new Event('submit'));
+    });
+    list.appendChild(card);
+  }
+}
+
 // ── Form submit ───────────────────────────────────────────────────────────────
 document.getElementById('form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -297,8 +346,10 @@ document.getElementById('form').addEventListener('submit', async (ev) => {
   const series  = document.getElementById('series').value;
   const load_kg = document.getElementById('load_kg').value;
 
+  const centre_legs = document.getElementById('centre_legs').checked;
   const params = new URLSearchParams({ width, depth, height, series, load_kg });
   if (shelf) params.set('shelf', shelf);
+  if (centre_legs) params.set('centre_legs', 'true');
 
   let resp;
   try {
@@ -319,6 +370,22 @@ document.getElementById('form').addEventListener('submit', async (ev) => {
   renderBars(data.bars);
   renderCutList(data.cut_list);
   renderChecks(data.check_report);
+  renderSuggestions(data.suggestions ?? []);
+
+  // Fire-and-forget: ask /suggest for LLM-ranked text (no key → no-op server side)
+  const specPayload = {
+    width_mm: parseFloat(width), depth_mm: parseFloat(depth),
+    height_mm: parseFloat(height), shelf_height_mm: shelf ? parseFloat(shelf) : null,
+    profile_series: series, target_load_kg: parseFloat(load_kg),
+    centre_legs: centre_legs,
+  };
+  fetch('/suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spec: specPayload, original_request: '' }),
+  }).then(r => r.ok ? r.json() : null).then(d => {
+    if (d && d.suggestions && d.suggestions.length) renderSuggestions(d.suggestions);
+  }).catch(() => {});
 });
 
 // ── Parse input ───────────────────────────────────────────────────────────────
@@ -338,12 +405,13 @@ function _showParseStatus(msg, cls) {
 }
 
 function _fillForm(spec) {
-  document.getElementById('width').value   = spec.width_mm;
-  document.getElementById('depth').value   = spec.depth_mm;
-  document.getElementById('height').value  = spec.height_mm;
-  document.getElementById('shelf').value   = spec.shelf_height_mm ?? '';
-  document.getElementById('series').value  = spec.profile_series;
-  document.getElementById('load_kg').value = spec.target_load_kg;
+  document.getElementById('width').value        = spec.width_mm;
+  document.getElementById('depth').value        = spec.depth_mm;
+  document.getElementById('height').value       = spec.height_mm;
+  document.getElementById('shelf').value        = spec.shelf_height_mm ?? '';
+  document.getElementById('series').value       = spec.profile_series;
+  document.getElementById('load_kg').value      = spec.target_load_kg;
+  document.getElementById('centre_legs').checked = spec.centre_legs ?? false;
 }
 
 document.getElementById('parse-btn').addEventListener('click', async () => {

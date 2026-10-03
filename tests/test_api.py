@@ -108,6 +108,86 @@ def test_with_shelf_cut_list_total() -> None:
     assert total == 11760.0
 
 
+# ── Centre legs ───────────────────────────────────────────────────────────────
+
+_CL_PARAMS = {"width": 3000, "depth": 700, "height": 900, "centre_legs": "true"}
+
+
+def test_centre_legs_bar_count() -> None:
+    resp = client.get("/frame", params=_CL_PARAMS)
+    assert resp.status_code == 200
+    bars = resp.json()["bars"]
+    # 4 corner legs + 2 centre legs + 4 width half-rails + 2 depth rails = 12
+    assert len(bars) == 12
+
+
+def test_centre_legs_roles() -> None:
+    resp = client.get("/frame", params=_CL_PARAMS)
+    bars = resp.json()["bars"]
+    by_role: dict[str, int] = {}
+    for bar in bars:
+        by_role[bar["role"]] = by_role.get(bar["role"], 0) + 1
+    assert by_role["leg"] == 4
+    assert by_role["centre_leg"] == 2
+    assert by_role["top_rail_width"] == 4
+    assert by_role["top_rail_depth"] == 2
+
+
+def test_centre_legs_cut_list() -> None:
+    """3000×700×900 with centre legs: 6 legs@900, 4 width rails@1440, 2 depth rails@620.
+    Total = 6*900 + 4*1440 + 2*620 = 5400 + 5760 + 1240 = 12400 mm."""
+    resp = client.get("/frame", params=_CL_PARAMS)
+    rows = resp.json()["cut_list"]
+    total = sum(r["total_mm"] for r in rows)
+    assert total == 12400.0
+    lengths = sorted(r["length_mm"] for r in rows)
+    # 620 (qty 2), 900 (qty 6), 1440 (qty 4) → rows sorted by length
+    assert lengths == [620.0, 900.0, 1440.0]
+    qty_by_len = {r["length_mm"]: r["qty"] for r in rows}
+    assert qty_by_len[900.0] == 6
+    assert qty_by_len[1440.0] == 4
+    assert qty_by_len[620.0] == 2
+
+
+def test_centre_legs_with_shelf_cut_list() -> None:
+    """3000×700×900, shelf@300, centre_legs.
+    8 width half-rails@1440, 4 depth rails@620, 6 legs@900.
+    Total = 8*1440 + 4*620 + 6*900 = 11520 + 2480 + 5400 = 19400 mm."""
+    resp = client.get(
+        "/frame",
+        params={
+            "width": 3000, "depth": 700, "height": 900,
+            "shelf": 300, "centre_legs": "true",
+        },
+    )
+    assert resp.status_code == 200
+    rows = resp.json()["cut_list"]
+    total = sum(r["total_mm"] for r in rows)
+    assert total == 19400.0
+
+
+def test_centre_legs_load_check_worked_example() -> None:
+    """Worked example: σ=12.81 MPa, δ=2.01 mm vs allowables 57.46 MPa, 4.80 mm."""
+    resp = client.get("/frame", params=_CL_PARAMS)
+    load = resp.json()["check_report"]["load"]
+    assert load["passed"] is True
+    gov = load["governing_rail"]
+    dist = gov["distributed"]
+    import pytest
+    assert dist["bending_stress_mpa"] == pytest.approx(12.81, abs=0.01)
+    assert dist["deflection_mm"] == pytest.approx(2.01, abs=0.01)
+    assert gov["allowable_stress_mpa"] == pytest.approx(57.46, abs=0.01)
+    assert gov["deflection_limit_mm"] == pytest.approx(4.80, abs=0.01)
+
+
+def test_centre_legs_too_narrow_returns_400() -> None:
+    resp = client.get(
+        "/frame",
+        params={"width": 100, "depth": 700, "height": 900, "centre_legs": "true"},
+    )
+    assert resp.status_code == 400
+
+
 # ── Error cases ───────────────────────────────────────────────────────────────
 
 def test_shelf_above_height_returns_400() -> None:

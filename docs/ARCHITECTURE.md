@@ -7,7 +7,7 @@ Update this file as modules are built.
 
 ```
 text request
-   |  parser (LLM, rule-based fallback)
+   |  parser (rule-based first; LLM as fallback when ANTHROPIC_API_KEY is set)
    v
 FrameSpec  -- validated; retry on failure
    |  generate (deterministic)
@@ -19,14 +19,21 @@ CheckReport
    |  outputs
    v
 cut list, bill of materials, 3D scene data
+   |  suggestions (deterministic — template text; no LLM)
+   v
+FixCandidates  -- up to 3 verified passing specs + check reports + template text
+   |  POST /suggest (optional, only calls LLM when ANTHROPIC_API_KEY is set)
+   v
+ranked candidates with one plain sentence each
 ```
 
-The LLM is used in exactly one place: text to `FrameSpec`. Everything else is plain code, so the same spec always gives the same result.
+The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `suggestions/rank.py` (ranking + prose). Everything else is plain code. `GET /frame` never calls the LLM.
 
 ## Data shapes
 
-- **FrameSpec**: frame type, width, depth, height (mm), target load (kg), options (shelf, casters), profile series.
-- **Bar**: profile id, start point, end point, length (mm), role (leg, rail, brace, shelf support).
+- **FrameSpec**: frame type, width, depth, height (mm), target load (kg), options (shelf, casters, `centre_legs`), profile series. `centre_legs: bool = False` — when `True`, two extra legs are placed at mid-width, splitting each width rail and shelf rail into two equal half-spans.
+- **FixCandidate**: fix type (`reduce_span_width`, `reduce_span_depth`, `reduce_load`, `centre_legs`), modified `FrameSpec`, verified `CheckReport`, template `trade_off` string, `resolves` field (which load case the fix targets), and `concentrated_warning_remains`.
+- **Bar**: profile id, start point, end point, length (mm), role (leg, centre_leg, rail, brace, shelf support).
 - **Joint**: the two bars it connects, position, connector type.
 - **Frame**: list of bars, list of joints, the spec it came from.
 - **CheckReport**: pass/fail and details for collision, connectivity, and load; the load section carries the safety factor and an "estimate" label.
@@ -43,11 +50,13 @@ The LLM is used in exactly one place: text to `FrameSpec`. Everything else is pl
 | `checks/` | Collision, connectivity, load estimate | catalog | done |
 | `outputs/` | Cut list and BOM | catalog | cut list done; BOM not started |
 | `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher | spec | done |
-| `api.py` | `/frame` and `/parse` endpoints | all of the above | done |
+| `suggestions/` | Generate and verify fix candidates for failing load checks; pure code, no LLM | spec, generate, checks | done |
+| `suggestions/rank.py` | Rank candidates and write one sentence per fix; only imported by `api.py` | suggestions, anthropic SDK | done |
+| `api.py` | `/frame`, `/parse`, and `/suggest` endpoints | all of the above | done |
 | `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression + test prompt sets; harness runs) |
 | `web/` | Parse input, Three.js viewer, tables | api | done (parse input, viewer, cut list, checks) |
 
-Dependencies point one way. `generate`, `checks`, and `outputs` must not import `parser`, so the core runs and tests without an API key.
+Dependencies point one way. `generate`, `checks`, `outputs`, and `suggestions/__init__.py` must not import `parser` or `suggestions/rank.py`, so the core runs and tests without an API key.
 
 ## Catalog
 
@@ -119,6 +128,28 @@ Using utilisation (not stress alone) prevents missing a rail that governs on def
 
 If any of `youngs_modulus_mpa`, `yield_strength_mpa`, or `moment_of_inertia_mm4` is absent, the load estimate returns `status = "not_evaluated"` and `passed = False`. It never reports a pass with incomplete data.
 
+### Centre-leg geometry (`centre_legs = True`)
+
+Two extra legs (`role = "centre_leg"`) are placed at `x = W/2`, one at each depth face. Each width rail and each shelf rail is split at the centre leg into two half-rails:
+
+```
+L_half = (W − 3·P) / 2
+```
+
+Validation: `W > 3·P`. For W = 3000, P = 40: four width half-rails of 1440 mm and six legs total (4 corner + 2 centre).
+
+**Load model (conservative):** each half-rail carries the same load as a full rail would — F/2 for the distributed case, F for the concentrated case. Formulas are identical to cases (a) and (b) with `L = L_half`.
+
+**Worked example (3000 × 700 × 900, 40-series, 100 kg, centre_legs = True):**
+
+```
+L_half = (3000 − 120) / 2 = 1440 mm
+σ_allow = 172.37 / 3 = 57.46 MPa    δ_allow = 1440 / 300 = 4.80 mm
+σ = 981 × 1440 / (16 × 6893.5) = 12.81 MPa   δ = 2.01 mm   → PASS
+```
+
+Without centre legs the governing span is 2920 mm (δ = 16.73 mm, fails).
+
 ### What this estimate does NOT cover
 
 1. Joint failure: T-nut pull-out, bracket shear, bolt torque
@@ -134,6 +165,29 @@ If any of `youngs_modulus_mpa`, `yield_strength_mpa`, or `moment_of_inertia_mm4`
 11. Self-weight of bars and any tabletop surface
 12. Temperature effects on material properties
 13. Uneven floor or soft/pivoting mounts
+
+## Suggestions
+
+When `check_report.load.passed` is `False` (distributed fails) or the concentrated case warns, up to three fix candidates are generated by `src/framegen/suggestions/__init__.py`.
+
+**Trigger:** distributed fails → target distributed pass; only concentrated warns → target concentrated pass.
+
+**Candidate search (closed-form, then verified):**
+
+```
+Distributed L_max:   stress → 16·S·σ_allow/F;  defl → sqrt(768·E·I / (1500·F))
+Concentrated L_max:  stress → 4·S·σ_allow/F;   defl → sqrt(48·E·I / (300·F))
+Load fix:            F_max = spec.target_load_kg / u   (u = governing utilisation)
+Centre legs:         set centre_legs=True, verify
+```
+
+Every candidate is verified by `generate_table + run_checks`. Only verified passes are offered. Span candidates are rounded down to the nearest 10 mm; load candidates to the nearest 5 kg.
+
+**`GET /frame`** always returns suggestions with template `trade_off` text (no LLM).
+
+**`POST /suggest`** recomputes suggestions server-side, then calls `suggestions/rank.py` if `ANTHROPIC_API_KEY` is set. The LLM may reorder candidates but must not add or drop any. Every number in a sentence must appear verbatim in the candidate's verified data; sentences that fail this guard are replaced with template text.
+
+**Evals:** `evals/suggestions_suite.py` — four signals per case: validity, coverage, count, minimality (the next-step-worse value must fail).
 
 ## Evals
 
@@ -212,4 +266,10 @@ Results committed to `evals/results/`. `prompts_test.json` is user-written and n
 5. Prompt parser ✓
 6. Eval harness ✓
 7. Web page ✓
-8. Release work (hosting, real catalogs, CAD export)
+8. Suggestions module ✓
+   a. suggestions/__init__.py (pure code) ✓
+   b. FrameSpec.centre_legs + generator extension ✓
+   c. suggestions/rank.py + POST /suggest ✓
+   d. Web Apply button ✓
+   e. Suggestions eval suite ✓
+9. Release work (hosting, real catalogs, CAD export)

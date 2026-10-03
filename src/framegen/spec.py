@@ -13,6 +13,7 @@ class FrameSpec(BaseModel):
     profile_series: str
     shelf_height_mm: float | None = None
     target_load_kg: float
+    centre_legs: bool = False
 
     @model_validator(mode="after")
     def _check_positive(self) -> Self:
