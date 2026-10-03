@@ -19,9 +19,11 @@ These are product decisions, not suggestions. Changing any of them needs approva
 ## Stack
 
 - Backend: Python 3.11+, FastAPI, Pydantic v2
-- Tests and checks: pytest, ruff, mypy
-- Frontend: one web page, Three.js for the 3D view, no framework until one is needed
-- LLM: called only from `src/framegen/parser/`; API key from the environment, never from a file in the repo
+- Backend tests and checks: pytest, ruff, mypy
+- Frontend: Next.js 16 App Router, TypeScript, Tailwind CSS v4, Three.js / R3F (Stage B)
+- Frontend tests: Vitest + React Testing Library (run from `frontend/`)
+- LLM: called only from `src/framegen/parser/` and `src/framegen/suggestions/rank.py`;
+  API key from the environment, never from a file in the repo
 
 ## Layout
 
@@ -37,39 +39,64 @@ src/framegen/
   checks/      collision, connectivity, load estimate
   outputs/     cut list, bill of materials
   parser/      text -> FrameSpec (LLM, with a rule-based fallback)
+  suggestions/ fix candidates (pure code) + LLM ranker
   api.py       FastAPI app
 evals/         benchmark prompts, scoring, logged runs
-web/           viewer page
-tests/
+web/           legacy viewer page (Three.js, no framework)
+frontend/      Next.js app (current UI)
+  app/         App Router pages and layout
+  components/  React components
+  hooks/       API hooks (useFrameApi, useParseApi, useSuggestApi, useUndo)
+  lib/         types, examples, coordinates, theme helpers
+  __tests__/   Vitest unit tests
+tests/         Python backend tests
 data/catalog/  versioned catalog files
 ```
 
 ## Commands
 
-Install the package and dev tools once:
+Install the backend package and dev tools once:
 
 ```
 pip install -e ".[dev]"
 ```
 
-Then:
+Install the frontend once (from `frontend/`):
 
 ```
-pytest                      # tests (116 passing)
+cd frontend && npm install
+```
+
+Then (backend, from repo root):
+
+```
+pytest                      # Python tests
 ruff check . && mypy src    # lint and types
 python -m framegen --width 1500 --depth 700 --height 900             # cut list, no shelf
 python -m framegen --width 1500 --depth 700 --height 900 --shelf 300 # cut list, with shelf
 python -m evals.run --config rule_based --file dev        # parser eval, dev set
 python -m evals.run --config rule_based --file regression # parser eval, regression set
 python -m evals.run --config dispatcher --file dev        # full dispatcher (needs ANTHROPIC_API_KEY)
-uvicorn framegen.api:app    # local server; loads .env if present
+uvicorn framegen.api:app    # local server on :8080; loads .env if present
+```
+
+Frontend (from `frontend/`):
+
+```
+npm run dev     # dev server on :3000, proxies /frame /parse /suggest to :8080
+npm test        # Vitest unit tests
+npm run lint    # ESLint
 ```
 
 API endpoints:
 
 ```
-GET  /frame   width, depth, height, shelf?, series?, load_kg?  → bars, cut list, check report
-POST /parse   {"text": "<500 chars>"}                          → outcome, spec, error, defaults_applied, parser_used, llm_available
+GET  /frame   width, depth, height, shelf?, series?, load_kg?, centre_legs?
+              → bars, cut list, check_report, suggestions
+POST /parse   {"text": "<500 chars>"}
+              → outcome, spec, error, defaults_applied, parser_used, llm_available
+POST /suggest {"spec": FrameSpec, "original_request": str}
+              → {"suggestions": [FixCandidate, ...]}
 ```
 
 ## How to work

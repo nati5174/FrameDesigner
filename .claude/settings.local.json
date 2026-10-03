@@ -9,7 +9,14 @@
       "Bash(ruff check:*)",
       "Bash(python:*)",
       "Bash(curl:*)",
-      "Bash(mypy src:*)"
+      "Bash(mypy src:*)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(npm test:*)",
+      "Bash(NODE_OPTIONS=\"--experimental-require-module\" npx vitest:*)",
+      "Bash(uvicorn framegen.api:app:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
