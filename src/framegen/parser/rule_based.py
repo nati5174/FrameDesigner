@@ -95,6 +95,22 @@ _PER_LEVEL_RE = re.compile(
 # become a table, so the table parser returns not_parsed to let the LLM decide.
 _SHELVES_PLURAL_RE = re.compile(r'shelves(?!\w)', re.IGNORECASE)
 
+# ── Centre-legs detection ─────────────────────────────────────────────────────
+
+_CENTRE_LEGS_TRUE_RE = re.compile(
+    r'(?<!\w)'
+    r'(?:(?:add|with|include)\s+)?'
+    r'(?:centre|center|middle)\s+legs?'
+    r'(?!\w)',
+    re.IGNORECASE,
+)
+_CENTRE_LEGS_FALSE_RE = re.compile(
+    r'(?<!\w)'
+    r'(?:no|without|remove)\s+(?:centre|center|middle)\s+legs?'
+    r'(?!\w)',
+    re.IGNORECASE,
+)
+
 
 # ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -371,6 +387,13 @@ def _try_parse_shelf_unit(
         load_per_level = 30.0
         defaults.append("load_per_level_kg=30")
 
+    if _CENTRE_LEGS_FALSE_RE.search(text):
+        centre_legs = False
+    elif _CENTRE_LEGS_TRUE_RE.search(text):
+        centre_legs = True
+    else:
+        centre_legs = False
+
     try:
         spec = ShelfUnitSpec.model_validate(
             dict(
@@ -381,6 +404,7 @@ def _try_parse_shelf_unit(
                 profile_series="40-series",
                 level_heights_mm=levels,
                 load_per_level_kg=load_per_level,
+                centre_legs=centre_legs,
             )
         )
     except ValidationError as exc:
@@ -539,6 +563,13 @@ def parse(text: str) -> ParseResult:  # noqa: C901
         shelf_height = 300.0
         defaults.append("shelf_height_mm=300")
 
+    if _CENTRE_LEGS_FALSE_RE.search(text):
+        centre_legs = False
+    elif _CENTRE_LEGS_TRUE_RE.search(text):
+        centre_legs = True
+    else:
+        centre_legs = False
+
     try:
         spec = TableSpec.model_validate(
             dict(
@@ -549,6 +580,7 @@ def parse(text: str) -> ParseResult:  # noqa: C901
                 profile_series="40-series",
                 target_load_kg=load_kg,
                 shelf_height_mm=shelf_height,
+                centre_legs=centre_legs,
             )
         )
     except ValidationError as exc:

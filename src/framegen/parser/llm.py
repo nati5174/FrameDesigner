@@ -76,7 +76,8 @@ For a TABLE return:
   "depth_mm": <number>,
   "height_mm": <number | null>,
   "shelf_height_mm": <number | null>,
-  "target_load_kg": <number | null>
+  "target_load_kg": <number | null>,
+  "centre_legs": <true | false | null>
 }
 
 For a SHELF UNIT return:
@@ -86,11 +87,14 @@ For a SHELF UNIT return:
   "depth_mm": <number>,
   "height_mm": <number | null>,
   "level_heights_mm": <sorted list of 3–10 numbers | null>,
-  "load_per_level_kg": <number | null>
+  "load_per_level_kg": <number | null>,
+  "centre_legs": <true | false | null>
 }
 ──────────────────────────────────────────────────────────────────
 
 Rules:
+- centre_legs: true if user says "centre legs", "center legs", "middle legs",
+  "middle support", etc. false or null if not mentioned (defaults to false).
 - Convert all measurements to millimetres (cm × 10, m × 1000).
 - Return null for height_mm if the user did not state it; the caller applies
   the correct default based on the wording.
@@ -198,6 +202,8 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
             load_per_level = 30.0
             defaults.append("load_per_level_kg=30")
 
+        centre_legs = bool(data["centre_legs"]) if data.get("centre_legs") else False
+
         try:
             spec: ShelfUnitSpec | TableSpec = ShelfUnitSpec.model_validate(
                 dict(
@@ -208,6 +214,7 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
                     profile_series="40-series",
                     level_heights_mm=level_heights_mm,
                     load_per_level_kg=load_per_level,
+                    centre_legs=centre_legs,
                 )
             )
         except ValidationError as exc:
@@ -238,6 +245,7 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
         defaults.append("target_load_kg=100")
 
     shelf_height = data.get("shelf_height_mm")
+    centre_legs = bool(data.get("centre_legs")) if data.get("centre_legs") else False
 
     try:
         spec = TableSpec.model_validate(
@@ -249,6 +257,7 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
                 profile_series="40-series",
                 target_load_kg=load_kg,
                 shelf_height_mm=shelf_height,
+                centre_legs=centre_legs,
             )
         )
     except ValidationError as exc:
