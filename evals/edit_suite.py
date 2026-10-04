@@ -141,6 +141,12 @@ def _check_spec_fields(
                     False,
                     f"level_heights_mm does not contain {v}: {spec.level_heights_mm}",
                 )
+        elif k == "profile_series":
+            if spec.profile_series != v:
+                return (
+                    False,
+                    f"profile_series: expected {v!r}, got {spec.profile_series!r}",
+                )
 
     return True, ""
 

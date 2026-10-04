@@ -489,9 +489,10 @@ def _match_block(text: str) -> list[Operation]:
 def _profile_pat(n: str) -> re.Pattern[str]:
     nn = n * 2  # "20" → "2020"
     return re.compile(
-        rf'(?<!\d){n}\s*-\s*series'
-        rf'|(?<!\d){n}\s*mm\s+(?:profile|extrusion|series)'
-        rf'|(?<!\d){nn}(?!\d)',
+        rf'(?<!\d){n}\s*-?\s*series'            # "30-series" or "30 series"
+        rf'|(?<!\d){n}\s*mm?\s+(?:profile|extrusion|series)'  # "30mm profile"
+        rf'|(?<!\d){n}\s*mm?(?!\d)(?=\s*$|\s*[,.])'  # "45mm" at end/punctuation
+        rf'|(?<!\d){nn}(?!\d)',                 # "3030"
         re.IGNORECASE,
     )
 

@@ -24,11 +24,14 @@ sys.path.insert(0, str(_ROOT / "src"))
 from framegen.catalog import load_catalog  # noqa: E402
 from framegen.checks import run_checks  # noqa: E402
 from framegen.generate.table import generate_table  # noqa: E402
-from framegen.spec import FrameSpec  # noqa: E402
+from framegen.spec import TableSpec  # noqa: E402
 from framegen.suggestions import FixCandidate, suggest_fixes  # noqa: E402
+
+FrameSpec = TableSpec
 
 _CATALOG = load_catalog()
 _PROFILE = _CATALOG.profiles["40-series"]
+_PROFILE_45 = _CATALOG.profiles["45-series"]
 
 # Rounding step used by suggestions/__init__.py
 _SPAN_STEP_MM = 10
@@ -60,7 +63,7 @@ _CASES: list[Case] = [
         spec=FrameSpec(
             frame_type="table",
             width_mm=1500, depth_mm=700, height_mm=900,
-            profile_series="40-series", target_load_kg=5000,
+            profile_series="40-series", target_load_kg=1500,
         ),
         expected_fix_types=["reduce_load"],
     ),
@@ -77,11 +80,12 @@ _CASES: list[Case] = [
         expects_empty=False,     # we just validate whatever is returned
     ),
     Case(
-        id="healthy_frame_no_suggestions",
+        id="healthy_frame_cheapest_profile",
+        # 20-series is cheapest — no cheaper profile exists → no cheaper suggestion
         spec=FrameSpec(
             frame_type="table",
-            width_mm=800, depth_mm=600, height_mm=900,
-            profile_series="40-series", target_load_kg=50,
+            width_mm=400, depth_mm=300, height_mm=500,
+            profile_series="20-series", target_load_kg=5,
         ),
         expected_fix_types=[],
         expects_empty=True,
@@ -94,6 +98,17 @@ _CASES: list[Case] = [
             profile_series="40-series", target_load_kg=100,
         ),
         expected_fix_types=["centre_legs"],
+    ),
+    Case(
+        id="cheaper_profile_passing_40_to_45",
+        # 800×600×900 at 50 kg on 40-series passes cleanly; 45-series is cheaper
+        spec=FrameSpec(
+            frame_type="table",
+            width_mm=800, depth_mm=600, height_mm=900,
+            profile_series="40-series", target_load_kg=50,
+        ),
+        expected_fix_types=["cheaper_profile"],
+        expects_empty=False,
     ),
 ]
 
@@ -146,6 +161,16 @@ def _next_step_fails(c: FixCandidate, orig_spec: FrameSpec) -> bool:
         # Inverse: removing centre_legs should fail
         worse_spec = c.spec.model_copy(update={"centre_legs": False})
         return not _run(worse_spec)
+    elif c.fix_type == "cheaper_profile":
+        # Profile switches have no numeric "step worse" — consider minimality N/A
+        return True
+    elif c.fix_type == "reduce_load_per_level":
+        if c.spec.load_per_level_kg is None:
+            return False
+        worse_spec = c.spec.model_copy(
+            update={"load_per_level_kg": c.spec.load_per_level_kg + _LOAD_STEP_KG}
+        )
+        return not _run(worse_spec)
     return False
 
 
@@ -176,9 +201,10 @@ class CaseResult:
 def run() -> list[CaseResult]:
     results: list[CaseResult] = []
     for case in _CASES:
-        bars = generate_table(case.spec, _PROFILE)
-        report = run_checks(bars, case.spec, _PROFILE)
-        fixes = suggest_fixes(case.spec, _PROFILE, report)
+        profile = _CATALOG.profiles[case.spec.profile_series]
+        bars = generate_table(case.spec, profile)
+        report = run_checks(bars, case.spec, profile)
+        fixes = suggest_fixes(case.spec, profile, report, _CATALOG)
 
         if case.expects_empty:
             validity = (fixes == [])

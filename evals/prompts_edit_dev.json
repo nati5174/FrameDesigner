@@ -519,6 +519,54 @@
         "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
       },
       "expected": {"outcome": "unsupported"}
+    },
+    {
+      "id": "PS1",
+      "group": "profile_switch",
+      "text": "use 30 series",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"profile_series": "30-series"}}
+    },
+    {
+      "id": "PS2",
+      "group": "profile_switch",
+      "text": "switch to 45 series",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"profile_series": "45-series"}}
+    },
+    {
+      "id": "PS3",
+      "group": "profile_switch",
+      "text": "use 2020 extrusion",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"profile_series": "20-series"}}
+    },
+    {
+      "id": "PS4",
+      "group": "profile_switch",
+      "text": "change the profile to 45mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"profile_series": "45-series"}}
     }
   ]
 }
