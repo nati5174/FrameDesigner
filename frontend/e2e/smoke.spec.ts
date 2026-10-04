@@ -92,6 +92,13 @@ test("smoke: 1500×700×900 table at 100 kg — no errors, no overflow, badge, c
     const costCell = firstTfoot.locator("tr").last().locator("td").last();
     await expect(costCell).toContainText("$");
 
+    // ── Wait for the 3D viewer canvas to appear and finish rendering ──────────
+    // The viewer is a dynamic import (ssr:false) + Suspense, so it resolves
+    // independently of the API response.  Wait for the canvas to mount, then
+    // give WebGL (via SwiftShader) a moment to paint the first frame.
+    await page.locator("canvas").waitFor({ timeout: 15_000 });
+    await page.waitForTimeout(1500);
+
     // ── Screenshot ────────────────────────────────────────────────────────────
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, `smoke-${vp.name}.png`),

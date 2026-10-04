@@ -38,6 +38,9 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         launchOptions: {
           executablePath: fallbackChromiumPath(),
+          // Enable software WebGL so Three.js / React Three Fiber renders in
+          // headless mode.  SwiftShader is bundled with Chrome.
+          args: ["--use-gl=angle", "--use-angle=swiftshader"],
         },
       },
     },

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Bounds, useBounds, Text } from "@react-three/drei";
+import { OrbitControls, Grid, Bounds, useBounds, Text, Billboard } from "@react-three/drei";
 import type { BarData } from "@/lib/types";
 import { toThree } from "@/lib/coordinates";
 import { FrameBar } from "./FrameBar";
@@ -99,33 +99,36 @@ function DimensionLabels({ bars, dims }: DimsProps) {
   const GAP = 0.07;
 
   const textProps = {
-    fontSize: 0.028,
+    fontSize: 0.055,
     color: "#E6E3DD",
     anchorX: "center" as const,
     anchorY: "middle" as const,
-    outlineColor: "#0F0F14",
-    outlineWidth: 0.004,
+    outlineColor: "#1A1A24",
+    outlineWidth: 0.008,
   };
 
   return (
     <>
       {/* Width — below front bottom edge, centred X */}
-      <Text {...textProps}
-        position={[(min.x + max.x) / 2, min.y - GAP * 0.6, max.z + GAP]}>
-        {`W  ${dims.widthMm.toLocaleString()} mm`}
-      </Text>
+      <Billboard position={[(min.x + max.x) / 2, min.y - GAP * 0.8, max.z + GAP * 0.5]}>
+        <Text {...textProps}>
+          {`W  ${dims.widthMm.toLocaleString()} mm`}
+        </Text>
+      </Billboard>
 
       {/* Depth — right of right-bottom edge, centred Z */}
-      <Text {...textProps}
-        position={[max.x + GAP, min.y - GAP * 0.6, (min.z + max.z) / 2]}>
-        {`D  ${dims.depthMm.toLocaleString()} mm`}
-      </Text>
+      <Billboard position={[max.x + GAP * 0.5, min.y - GAP * 0.8, (min.z + max.z) / 2]}>
+        <Text {...textProps}>
+          {`D  ${dims.depthMm.toLocaleString()} mm`}
+        </Text>
+      </Billboard>
 
       {/* Height — left of front-left edge, centred Y */}
-      <Text {...textProps}
-        position={[min.x - GAP, (min.y + max.y) / 2, max.z + GAP]}>
-        {`H  ${dims.heightMm.toLocaleString()} mm`}
-      </Text>
+      <Billboard position={[min.x - GAP * 0.5, (min.y + max.y) / 2, max.z + GAP * 0.5]}>
+        <Text {...textProps}>
+          {`H  ${dims.heightMm.toLocaleString()} mm`}
+        </Text>
+      </Billboard>
     </>
   );
 }
