@@ -262,10 +262,26 @@ class TestShelfUnitSignals:
         r = rb_parse("shelf unit 900 x 400 x 2000, 12 levels")
         assert r.outcome == "spec_invalid"
 
-    def test_shelves_plural_no_count_not_parsed(self) -> None:
-        # "shelves" plural without count or explicit heights → ambiguous → not_parsed
+    def test_table_word_shelves_plural_is_invalid(self) -> None:
+        # table word + "shelves" plural, no count/heights → spec_invalid
         r = rb_parse("workbench with shelves, 1500 x 700")
+        assert r.outcome == "spec_invalid"
+        assert r.error is not None
+        assert "shelves" in r.error.lower()
+
+    def test_shelves_plural_no_table_word_not_parsed(self) -> None:
+        # "shelves" plural without table word → rule parser can't decide → not_parsed
+        r = rb_parse("bookshelves 1500 x 700")
         assert r.outcome == "not_parsed"
+
+    def test_table_word_with_count_becomes_shelf_unit_h900(self) -> None:
+        # Table word + count → shelf unit with H=900 (table-word height rule)
+        from framegen.spec import ShelfUnitSpec
+        r = rb_parse("workbench 1500 x 700 with 3 shelves")
+        assert r.outcome == "spec_valid", f"got {r.outcome}: {r.error}"
+        assert isinstance(r.spec, ShelfUnitSpec)
+        assert r.spec.height_mm == pytest.approx(900.0)
+        assert r.spec.level_heights_mm == [300.0, 600.0, 900.0]
 
     def test_singular_shelf_still_works(self) -> None:
         # "shelf" singular (single under-shelf on table) must still work

@@ -5,7 +5,7 @@ from typing import NamedTuple
 
 from pydantic import ValidationError
 
-from framegen.parser import ParseResult
+from framegen.parser import _TABLE_WORD_RE, ParseResult
 from framegen.spec import MIN_LEVEL_HEIGHT_MM, ShelfUnitSpec, TableSpec
 
 # ── Regex helpers ─────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ _PER_LEVEL_RE = re.compile(
 )
 # "shelves" plural standalone — ambiguous without a count; must not silently
 # become a table, so the table parser returns not_parsed to let the LLM decide.
-_SHELVES_PLURAL_RE = re.compile(r'(?<!\w)shelves(?!\w)', re.IGNORECASE)
+_SHELVES_PLURAL_RE = re.compile(r'shelves(?!\w)', re.IGNORECASE)
 
 
 # ── Tokens ────────────────────────────────────────────────────────────────────
@@ -338,7 +338,9 @@ def _try_parse_shelf_unit(
     elif shelf_vals:
         H = shelf_vals[-1]   # last explicit shelf height IS the frame top
     else:
-        H = 1800.0 if has_signal else 900.0
+        # Table word present (workbench, bench, desk, table) → 900;
+        # otherwise this is a pure shelf-unit context → 1800.
+        H = 900.0 if _TABLE_WORD_RE.search(text) else 1800.0
         defaults.append(f"height_mm={int(H)}")
 
     # Level heights
@@ -431,10 +433,23 @@ def parse(text: str) -> ParseResult:  # noqa: C901
     if shelf_result is not None:
         return shelf_result
 
-    # "shelves" plural without a count or explicit heights cannot be resolved by
-    # the rule parser.  Return not_parsed so the LLM can decide (shelf unit vs
-    # table with multiple shelves).
+    # "shelves" plural without a count or explicit heights is ambiguous.
+    # When a table word is also present the user has told us the primary type
+    # but not given us enough to build a shelf spec — reject with a clear message.
+    # Without a table word the rule parser cannot decide; hand off to the LLM.
     if _SHELVES_PLURAL_RE.search(text):
+        if _TABLE_WORD_RE.search(text):
+            return ParseResult(
+                outcome="spec_invalid",
+                spec=None,
+                error=(
+                    "Found 'shelves' but no shelf count or heights were given. "
+                    "How many shelves, and at what heights? "
+                    "For example: 'workbench 1500 x 700, 3 shelves' or "
+                    "'1500 x 700 x 900, shelves at 300mm and 600mm'."
+                ),
+                parser_used="rule_based",
+            )
         return _NOT_PARSED
 
     # ── Slot candidates ───────────────────────────────────────────────────────

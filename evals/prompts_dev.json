@@ -275,6 +275,11 @@
       "id": "N1", "group": "N",
       "text": "workbench with shelves, 1500 x 700",
       "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "O1", "group": "O",
+      "text": "workbench 1500 x 700 with 3 shelves",
+      "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 1500, "D": 700, "H": 900}
     }
   ]
 }

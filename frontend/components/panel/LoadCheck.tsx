@@ -138,22 +138,18 @@ export function LoadCheck({ checkReport }: LoadCheckProps) {
         Verify before building.
       </p>
 
-      <details className="text-xs text-muted">
-        <summary className="cursor-pointer select-none hover:text-text">
-          What these estimates do not cover
-        </summary>
-        <ul className="mt-1 ml-3 list-disc space-y-0.5 leading-relaxed">
-          <li>Joint failure (T-nut pull-out, bracket shear, bolt torque)</li>
-          <li>Frame racking under lateral load</li>
-          <li>Dynamic loads, impact, vibration, fatigue</li>
-          <li>Shear stress and stress concentrations at slots or holes</li>
-          <li>Shelf load (not added to top-rail check)</li>
-          <li>Self-weight of bars and tabletop surface</li>
-          <li>Uneven floor or soft/pivoting mounts</li>
-          <li>Certified structural analysis — verify with an engineer before
-            any safety-critical use</li>
-        </ul>
-      </details>
+      {checkReport.not_covered.length > 0 && (
+        <details className="text-xs text-muted">
+          <summary className="cursor-pointer select-none hover:text-text">
+            What these estimates do not cover
+          </summary>
+          <ul className="mt-1 ml-3 list-disc space-y-0.5 leading-relaxed">
+            {checkReport.not_covered.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {!collision.passed && (
         <p className="text-xs text-fail">

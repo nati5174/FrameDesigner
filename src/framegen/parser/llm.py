@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from pydantic import ValidationError
 
-from framegen.parser import ParseResult
+from framegen.parser import _TABLE_WORD_RE, ParseResult
 from framegen.spec import ShelfUnitSpec, TableSpec
 
 # ── Client protocol (injectable for tests) ────────────────────────────────────
@@ -92,15 +92,15 @@ For a SHELF UNIT return:
 
 Rules:
 - Convert all measurements to millimetres (cm × 10, m × 1000).
-- Default height when not stated: 900 mm for a table/bench/desk,
-  1800 mm for a shelf unit / bookcase / rack.
+- Return null for height_mm if the user did not state it; the caller applies
+  the correct default based on the wording.
 - For a shelf unit, level_heights_mm must be sorted ascending, last value
   must equal height_mm, minimum 3 entries. If the user gives explicit
   heights, use them (add height_mm as the last entry if missing).
   If not given, space levels evenly: e.g. 4 levels at height 2000 mm →
   [500, 1000, 1500, 2000].
-- Return null for height_mm or level_heights_mm only when truly unknown
-  (the caller will apply the appropriate default).
+- Return null for level_heights_mm when height_mm is also null (the caller
+  will compute levels after applying the height default).
 - If a dimension value is a bare number under 100 with no unit,
   return {"result": "unsupported",
           "reason": "Unitless number is ambiguous (mm, cm, or m?). \
@@ -173,7 +173,7 @@ def _interpret(raw: str) -> ParseResult:
     return ParseResult(outcome="spec_valid", spec=None, error=None, parser_used="llm")
 
 
-def _materialise(data: dict[str, Any]) -> ParseResult:  # noqa: C901
+def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # noqa: C901
     """Build a TableSpec or ShelfUnitSpec from already-validated JSON data."""
     defaults: list[str] = []
     frame_type = data.get("frame_type", "table")
@@ -181,8 +181,9 @@ def _materialise(data: dict[str, Any]) -> ParseResult:  # noqa: C901
     if frame_type == "shelf_unit":
         height_mm = data.get("height_mm")
         if height_mm is None:
-            height_mm = 1800.0
-            defaults.append("height_mm=1800")
+            # Apply wording-based default: table word → 900, else → 1800.
+            height_mm = 900.0 if _TABLE_WORD_RE.search(original_text) else 1800.0
+            defaults.append(f"height_mm={int(height_mm)}")
 
         level_heights_mm = data.get("level_heights_mm")
         if level_heights_mm is None:
@@ -320,4 +321,4 @@ def parse(text: str) -> ParseResult:
     except json.JSONDecodeError:
         return _NOT_PARSED
 
-    return _materialise(data)
+    return _materialise(data, user_text)

@@ -119,6 +119,7 @@ export interface CheckReport {
   passed: boolean;
   leg_check: LegCheck | null;
   tipping: TippingCheck | null;
+  not_covered: string[];
 }
 
 export interface FixCandidate {

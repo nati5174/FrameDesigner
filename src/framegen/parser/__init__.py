@@ -6,6 +6,12 @@ from typing import Literal
 
 from framegen.spec import ShelfUnitSpec, TableSpec
 
+# Words that identify a table/bench context (used for shelf-unit height defaulting
+# and for rejecting ambiguous "shelves" phrases).
+_TABLE_WORD_RE = _re.compile(
+    r'(?<!\w)(?:table|bench|workbench|desk)(?!\w)', _re.IGNORECASE
+)
+
 Outcome = Literal["spec_valid", "spec_invalid", "not_parsed"]
 ParserUsed = Literal["rule_based", "llm", "none"]
 

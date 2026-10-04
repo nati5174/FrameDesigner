@@ -20,6 +20,7 @@ function makePassingReport(): CheckReport {
     passed: true,
     leg_check: null,
     tipping: null,
+    not_covered: [],
   };
 }
 

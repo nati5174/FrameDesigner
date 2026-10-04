@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from framegen.catalog import Profile
@@ -16,6 +16,55 @@ TIPPING_HEIGHT_TO_DEPTH_LIMIT: float = 2.0
 
 _GRAVITY: float = 9.81  # N/kg
 _BBOX_EPS: float = 0.01  # mm
+
+# ── Not-covered lists ──────────────────────────────────────────────────────────
+# Served via CheckReport so there is one authoritative source in the backend.
+# The frontend displays these verbatim; do not put HTML in these strings.
+
+_TABLE_NOT_COVERED: list[str] = [
+    "Joint failure: T-nut pull-out, bracket shear, bolt torque",
+    "Leg buckling under compressive load",
+    "Frame racking under lateral load",
+    "Tipping under off-centre load",
+    "Dynamic loads, impact, vibration, fatigue",
+    "Shear stress in the profile cross-section",
+    "Stress concentrations at holes, slots, or notches",
+    "Shelf load (not included in the rail check)",
+    "Profile damage reducing the effective cross-section",
+    "Combined vertical and lateral loading",
+    "Self-weight of bars and any tabletop surface",
+    "Uneven floor or soft/pivoting mounts",
+    (
+        "Certified structural analysis — verify with an engineer"
+        " before any safety-critical use"
+    ),
+]
+
+_SHELF_UNIT_NOT_COVERED: list[str] = [
+    "Joint failure: T-nut pull-out, bracket shear, bolt torque",
+    (
+        "Leg buckling check assumes the unit is wall-anchored or braced"
+        " against racking; K=2.0 (fixed-free) is unconservative for a"
+        " freestanding unit that can sway"
+    ),
+    "Frame racking under lateral load",
+    (
+        "Tipping check is a rule-of-thumb H/D ratio; "
+        "off-centre loading is not modelled"
+    ),
+    "Dynamic loads, impact, vibration, fatigue",
+    "Shear stress in the profile cross-section",
+    "Stress concentrations at holes, slots, or notches",
+    "Load per level is assumed uniform; actual shelf loading patterns may differ",
+    "Profile damage reducing the effective cross-section",
+    "Combined vertical and lateral loading",
+    "Self-weight of bars and shelf surfaces",
+    "Uneven floor or soft/pivoting mounts",
+    (
+        "Certified structural analysis — verify with an engineer"
+        " before any safety-critical use"
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -112,6 +161,7 @@ class CheckReport:
     passed: bool
     leg_check: LegCheck | None = None
     tipping: TippingCheck | None = None
+    not_covered: list[str] = field(default_factory=list)
 
 
 # ── Geometry helpers ───────────────────────────────────────────────────────────
@@ -566,6 +616,7 @@ def run_checks(
             passed=passed,
             leg_check=leg_check,
             tipping=tipping,
+            not_covered=list(_SHELF_UNIT_NOT_COVERED),
         )
 
     load = check_load(bars, spec, profile)
@@ -574,4 +625,5 @@ def run_checks(
         connectivity=connectivity,
         load=load,
         passed=collision.passed and connectivity.passed and load.passed,
+        not_covered=list(_TABLE_NOT_COVERED),
     )

@@ -52,6 +52,7 @@ function makeReport(
     passed,
     leg_check: null,
     tipping: null,
+    not_covered: [],
   };
 }
 
