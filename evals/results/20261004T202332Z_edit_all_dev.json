@@ -1,0 +1,268 @@
+{
+  "timestamp": "20261004T202332Z",
+  "git_hash": "d91abc7",
+  "prompt_file": "prompts_edit_dev.json",
+  "prompt_file_version": "1.1",
+  "configs": [
+    {
+      "config": "rule_based",
+      "status": "ok",
+      "overall": "32/45",
+      "by_group": {
+        "add": "4/4",
+        "casual": "0/5",
+        "clarify": "0/1",
+        "clarify_no_number": "2/2",
+        "compound_llm": "0/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "profile_switch": "4/4",
+        "set": "6/6",
+        "shelf": "3/3",
+        "shelf_unit_levels": "3/3",
+        "spec_invalid": "2/2",
+        "type_change": "1/1",
+        "unsupported": "2/2",
+        "unsupported_unusual": "1/2",
+        "word_numbers": "0/4",
+        "wrong_field": "1/1"
+      },
+      "failures": [
+        {
+          "id": "CL1",
+          "text": "I want a frame 1500 mm wide",
+          "expected": {
+            "outcome": "clarify",
+            "missing": [
+              "depth_mm"
+            ]
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'clarify', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "H1",
+          "text": "bump the height up 20 cm",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1100
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "H2",
+          "text": "drop the shelf",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "shelf_height_mm": null
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "H3",
+          "text": "could you widen it by 10 cm?",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "width_mm": 1600
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "H4",
+          "text": "increase the height by 20cm",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1100
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "H5",
+          "text": "bring the load down to 80 kg",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "target_load_kg": 80
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "WN1",
+          "text": "five hundred millimetres wide",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "width_mm": 500
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "WN2",
+          "text": "ten centimetres taller",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1000
+            }
+          },
+          "got_outcome": "clarify",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'clarify'",
+          "parser_used": "rule_based"
+        },
+        {
+          "id": "WN3",
+          "text": "heght to 1 metre",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1000
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "WN4",
+          "text": "one metre high",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1000
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "CP1",
+          "text": "raise the whole thing 15 cm and widen by 10 cm",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1050,
+              "width_mm": 1600
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "CP2",
+          "text": "increase the height by 20cm and the depth by 5cm",
+          "expected": {
+            "outcome": "edit",
+            "spec": {
+              "height_mm": 1100,
+              "depth_mm": 750
+            }
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'edit', got 'not_parsed'",
+          "parser_used": "none"
+        },
+        {
+          "id": "UU2",
+          "text": "will it last a long time?",
+          "expected": {
+            "outcome": "unsupported"
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "fail_reason": "outcome: expected 'unsupported', got 'not_parsed'",
+          "parser_used": "none"
+        }
+      ]
+    },
+    {
+      "config": "llm",
+      "status": "ok",
+      "overall": "45/45",
+      "by_group": {
+        "add": "4/4",
+        "casual": "5/5",
+        "clarify": "1/1",
+        "clarify_no_number": "2/2",
+        "compound_llm": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "profile_switch": "4/4",
+        "set": "6/6",
+        "shelf": "3/3",
+        "shelf_unit_levels": "3/3",
+        "spec_invalid": "2/2",
+        "type_change": "1/1",
+        "unsupported": "2/2",
+        "unsupported_unusual": "2/2",
+        "word_numbers": "4/4",
+        "wrong_field": "1/1"
+      },
+      "failures": []
+    },
+    {
+      "config": "dispatcher",
+      "status": "ok",
+      "overall": "45/45",
+      "by_group": {
+        "add": "4/4",
+        "casual": "5/5",
+        "clarify": "1/1",
+        "clarify_no_number": "2/2",
+        "compound_llm": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "profile_switch": "4/4",
+        "set": "6/6",
+        "shelf": "3/3",
+        "shelf_unit_levels": "3/3",
+        "spec_invalid": "2/2",
+        "type_change": "1/1",
+        "unsupported": "2/2",
+        "unsupported_unusual": "2/2",
+        "word_numbers": "4/4",
+        "wrong_field": "1/1"
+      },
+      "failures": []
+    }
+  ]
+}
