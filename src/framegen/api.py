@@ -285,6 +285,154 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
     return {"suggestions": serialised}
 
 
+# ── /edit ─────────────────────────────────────────────────────────────────────
+
+class PartialSpecOut(BaseModel):
+    frame_type: Literal["table", "shelf_unit"] | None = None
+    width_mm: float | None = None
+    depth_mm: float | None = None
+    height_mm: float | None = None
+    profile_series: str | None = None
+    shelf_height_mm: float | None = None
+    target_load_kg: float | None = None
+    centre_legs: bool | None = None
+    level_heights_mm: list[float] | None = None
+    load_per_level_kg: float | None = None
+
+
+class FieldChangeOut(BaseModel):
+    field: str
+    old: float | str | bool | list[float] | None = None
+    new: float | str | bool | list[float] | None = None
+
+
+class EditRequest(BaseModel):
+    text: str = Field(..., max_length=500)
+    spec: SpecOut | None = None
+    pending: PartialSpecOut | None = None
+
+
+class EditResponse(BaseModel):
+    outcome: Literal[
+        "new_design", "edit", "clarify",
+        "unsupported", "spec_invalid", "not_parsed",
+    ]
+    spec: SpecOut | None = None
+    pending: PartialSpecOut | None = None
+    changes: list[FieldChangeOut] = []
+    missing: list[str] = []
+    defaults_applied: list[str] = []
+    read_as: Literal["edit", "new_design"] | None = None
+    parser_used: Literal["rule_based", "llm", "none"] = "none"
+    llm_available: bool = False
+    error: str | None = None
+
+
+def _spec_out_to_internal(s: SpecOut) -> TableSpec | ShelfUnitSpec:
+    if s.frame_type == "shelf_unit":
+        return ShelfUnitSpec.model_validate(
+            dict(
+                frame_type="shelf_unit",
+                width_mm=s.width_mm,
+                depth_mm=s.depth_mm,
+                height_mm=s.height_mm,
+                profile_series=s.profile_series,
+                level_heights_mm=s.level_heights_mm or [],
+                load_per_level_kg=s.load_per_level_kg or 30.0,
+                centre_legs=s.centre_legs,
+            )
+        )
+    return TableSpec.model_validate(
+        dict(
+            frame_type="table",
+            width_mm=s.width_mm,
+            depth_mm=s.depth_mm,
+            height_mm=s.height_mm,
+            profile_series=s.profile_series,
+            target_load_kg=s.target_load_kg or 100.0,
+            shelf_height_mm=s.shelf_height_mm,
+            centre_legs=s.centre_legs,
+        )
+    )
+
+
+def _partial_out_to_internal(p: PartialSpecOut) -> Any:
+    from framegen.parser.partial_spec import PartialSpec as _PS  # noqa: PLC0415
+    return _PS(
+        frame_type=p.frame_type,
+        width_mm=p.width_mm,
+        depth_mm=p.depth_mm,
+        height_mm=p.height_mm,
+        profile_series=p.profile_series,
+        shelf_height_mm=p.shelf_height_mm,
+        target_load_kg=p.target_load_kg,
+        centre_legs=p.centre_legs,
+        level_heights_mm=p.level_heights_mm,
+        load_per_level_kg=p.load_per_level_kg,
+    )
+
+
+def _partial_internal_to_out(p: Any) -> PartialSpecOut:
+    return PartialSpecOut(
+        frame_type=p.frame_type,
+        width_mm=p.width_mm,
+        depth_mm=p.depth_mm,
+        height_mm=p.height_mm,
+        profile_series=p.profile_series,
+        shelf_height_mm=p.shelf_height_mm,
+        target_load_kg=p.target_load_kg,
+        centre_legs=p.centre_legs,
+        level_heights_mm=p.level_heights_mm,
+        load_per_level_kg=p.load_per_level_kg,
+    )
+
+
+@app.post("/edit")
+def post_edit(req: EditRequest) -> EditResponse:
+    from framegen.parser.edit_dispatch import edit_parse  # noqa: PLC0415
+
+    llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+    spec_in: TableSpec | ShelfUnitSpec | None = None
+    if req.spec is not None:
+        try:
+            spec_in = _spec_out_to_internal(req.spec)
+        except ValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    pending_in = None
+    if req.pending is not None:
+        pending_in = _partial_out_to_internal(req.pending)
+
+    result = edit_parse(req.text, spec_in, pending_in)
+
+    spec_out: SpecOut | None = None
+    if result.spec is not None:
+        spec_out = _spec_to_out(result.spec)
+
+    pending_out: PartialSpecOut | None = None
+    if result.pending is not None:
+        pending_out = _partial_internal_to_out(result.pending)
+
+    changes_out = [
+        FieldChangeOut(field=c.field, old=c.old, new=c.new)
+        for c in result.changes
+    ]
+
+    return EditResponse(
+        outcome=result.outcome,
+        spec=spec_out,
+        pending=pending_out,
+        changes=changes_out,
+        missing=result.missing,
+        defaults_applied=result.defaults_applied,
+        read_as=result.read_as,
+        parser_used=result.parser_used,
+        llm_available=llm_available,
+        error=result.error,
+    )
+
+
 def _serialise_candidate(c: FixCandidate) -> dict[str, Any]:
     spec = c.spec
     spec_dict: dict[str, Any]
