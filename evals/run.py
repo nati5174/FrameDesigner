@@ -264,11 +264,49 @@ def _git_hash() -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="dispatcher",
-                    choices=["rule_based", "llm", "dispatcher", "all"])
+                    choices=["rule_based", "llm", "dispatcher", "all", "edit"])
     ap.add_argument("--file", default="dev",
                     choices=["dev", "regression", "test"])
     args = ap.parse_args()
 
+    # ── Edit eval — delegate to edit_suite ────────────────────────────────────
+    if args.config == "edit":
+        from evals.edit_suite import (
+            _print_report as _edit_print,
+        )
+        from evals.edit_suite import (
+            run as _edit_run,
+        )
+        edit_file_map = {
+            "dev": "prompts_edit_dev.json",
+            "regression": "prompts_edit_regression.json",
+            "test": "prompts_edit_dev.json",  # fallback
+        }
+        prompt_file = _EVALS_DIR / edit_file_map[args.file]
+        all_reports = []
+        for cfg in ["rule_based", "llm", "dispatcher"]:
+            rep, _ = _edit_run(cfg, prompt_file)
+            all_reports.append(rep)
+            _edit_print(rep)
+
+        _RESULTS_DIR.mkdir(exist_ok=True)
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        result_path = _RESULTS_DIR / f"{ts}_edit_{args.file}.json"
+        with open(result_path, "w") as f:
+            json.dump(
+                {
+                    "timestamp": ts,
+                    "git_hash": _git_hash(),
+                    "prompt_file": str(prompt_file.name),
+                    "configs": all_reports,
+                },
+                f,
+                indent=2,
+            )
+        print(f"\nResults saved to {result_path.relative_to(_ROOT)}")
+        return
+
+    # ── Parse eval (existing) ─────────────────────────────────────────────────
     _file_map = {
         "dev": "prompts_dev.json",
         "regression": "prompts_regression.json",

@@ -1,0 +1,330 @@
+{
+  "version": "1.0",
+  "description": "Edit eval dev set — covers all groups from chat-plan stage 4",
+  "prompts": [
+    {
+      "id": "S1",
+      "group": "set",
+      "text": "make it 1000 mm tall",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1000}}
+    },
+    {
+      "id": "S2",
+      "group": "set",
+      "text": "width 2000 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 2000}}
+    },
+    {
+      "id": "S3",
+      "group": "set",
+      "text": "600 mm deep",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"depth_mm": 600}}
+    },
+    {
+      "id": "S4",
+      "group": "set",
+      "text": "load 150 kg",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"target_load_kg": 150}}
+    },
+    {
+      "id": "S5",
+      "group": "set",
+      "text": "add centre legs",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"centre_legs": true}}
+    },
+    {
+      "id": "S6",
+      "group": "set",
+      "text": "no centre legs",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": true
+      },
+      "expected": {"outcome": "edit", "spec": {"centre_legs": false}}
+    },
+    {
+      "id": "A1",
+      "group": "add",
+      "text": "200 mm taller",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1100}}
+    },
+    {
+      "id": "A2",
+      "group": "add",
+      "text": "100 mm wider",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 1600}}
+    },
+    {
+      "id": "A3",
+      "group": "add",
+      "text": "50 mm shallower",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"depth_mm": 650}}
+    },
+    {
+      "id": "A4",
+      "group": "add",
+      "text": "shorter by 100 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 800}}
+    },
+    {
+      "id": "SH1",
+      "group": "shelf",
+      "text": "add a shelf",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"shelf_height_mm": 300}}
+    },
+    {
+      "id": "SH2",
+      "group": "shelf",
+      "text": "remove the shelf",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": 300, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"shelf_height_mm": null}}
+    },
+    {
+      "id": "SH3",
+      "group": "shelf",
+      "text": "raise the shelf by 100 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": 300, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"shelf_height_mm": 400}}
+    },
+    {
+      "id": "SU1",
+      "group": "shelf_unit_levels",
+      "text": "add a level at 900 mm",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600, 1200, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"level_heights_mm_contains": 900}
+      }
+    },
+    {
+      "id": "SU2",
+      "group": "shelf_unit_levels",
+      "text": "remove a level",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [450, 900, 1350, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"level_heights_mm_len": 3}
+      }
+    },
+    {
+      "id": "SU3",
+      "group": "shelf_unit_levels",
+      "text": "5 levels",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600, 1200, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"level_heights_mm_len": 5}
+      }
+    },
+    {
+      "id": "TC1",
+      "group": "type_change",
+      "text": "instead make a shelf unit 1200 x 400 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "new_design",
+        "spec": {"frame_type": "shelf_unit", "width_mm": 1200, "depth_mm": 400}
+      }
+    },
+    {
+      "id": "CL1",
+      "group": "clarify",
+      "text": "I want a frame 1500 mm wide",
+      "input_spec": null,
+      "expected": {"outcome": "clarify", "missing": ["depth_mm"]}
+    },
+    {
+      "id": "KO1",
+      "group": "keep_other_fields",
+      "text": "make it 1000 mm tall",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": 300, "target_load_kg": 150, "centre_legs": true
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {
+          "height_mm": 1000,
+          "width_mm": 1500,
+          "depth_mm": 700,
+          "shelf_height_mm": 300,
+          "target_load_kg": 150,
+          "centre_legs": true
+        }
+      }
+    },
+    {
+      "id": "SI1",
+      "group": "spec_invalid",
+      "text": "shelf at 1000 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "SI2",
+      "group": "spec_invalid",
+      "text": "remove a level",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600, 1200, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "UN1",
+      "group": "unsupported",
+      "text": "what bolts do I need",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "unsupported"}
+    },
+    {
+      "id": "UN2",
+      "group": "unsupported",
+      "text": "how do I assemble this",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "unsupported"}
+    },
+    {
+      "id": "LQ1",
+      "group": "load_question",
+      "text": "can it hold 150 kg",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"target_load_kg": 150}}
+    },
+    {
+      "id": "ND1",
+      "group": "new_design_signal",
+      "text": "instead make a 1500 x 700 mm workbench",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 800, "depth_mm": 400, "height_mm": 700,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 50, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "new_design",
+        "spec": {"width_mm": 1500, "depth_mm": 700}
+      }
+    }
+  ]
+}

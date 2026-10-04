@@ -1,0 +1,143 @@
+{
+  "version": "1.0",
+  "description": "Edit eval regression set — fixed cases that must always pass",
+  "prompts": [
+    {
+      "id": "R1",
+      "group": "set",
+      "text": "height to 750 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 750}}
+    },
+    {
+      "id": "R2",
+      "group": "set",
+      "text": "width to 1800 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 1800}}
+    },
+    {
+      "id": "R3",
+      "group": "add",
+      "text": "taller by 300 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1200}}
+    },
+    {
+      "id": "R4",
+      "group": "add",
+      "text": "narrower by 200 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 1300}}
+    },
+    {
+      "id": "R5",
+      "group": "shelf",
+      "text": "add a shelf at 400 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"shelf_height_mm": 400}}
+    },
+    {
+      "id": "R6",
+      "group": "shelf_unit_levels",
+      "text": "4 levels",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600, 1200, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"level_heights_mm_len": 4}
+      }
+    },
+    {
+      "id": "R7",
+      "group": "unsupported",
+      "text": "what fasteners do I need",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "unsupported"}
+    },
+    {
+      "id": "R8",
+      "group": "load_question",
+      "text": "will it hold 200 kg",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"target_load_kg": 200}}
+    },
+    {
+      "id": "R9",
+      "group": "new_design_signal",
+      "text": "start over with 2000 x 800 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "new_design",
+        "spec": {"width_mm": 2000, "depth_mm": 800}
+      }
+    },
+    {
+      "id": "R10",
+      "group": "keep_other_fields",
+      "text": "depth 800 mm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": 300, "target_load_kg": 120, "centre_legs": true
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {
+          "depth_mm": 800,
+          "width_mm": 1500,
+          "height_mm": 900,
+          "shelf_height_mm": 300,
+          "target_load_kg": 120,
+          "centre_legs": true
+        }
+      }
+    }
+  ]
+}
