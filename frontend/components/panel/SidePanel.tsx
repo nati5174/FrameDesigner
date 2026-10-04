@@ -7,6 +7,7 @@ import { DimensionsForm } from "@/components/panel/DimensionsForm";
 import { CutList } from "@/components/panel/CutList";
 import { LoadCheck } from "@/components/panel/LoadCheck";
 import { Suggestions } from "@/components/panel/Suggestions";
+import { SuggestionCard } from "@/components/panel/SuggestionCard";
 
 interface SidePanelProps {
   spec: FrameSpec | null;
@@ -211,6 +212,17 @@ function PanelContent({
               onRowHover={onCutListRowHover}
             />
           </CollapsibleSection>
+
+          {frameData.cost_suggestion && (
+            <CollapsibleSection title="Cost saving">
+              <SuggestionCard
+                candidate={frameData.cost_suggestion}
+                canUndo={canUndo}
+                onApply={onApply}
+                onUndo={onUndo}
+              />
+            </CollapsibleSection>
+          )}
         </>
       )}
     </>

@@ -130,7 +130,7 @@ const PASSING_REPORT: CheckReport = {
 
 const FRAME_DATA_PASS: FrameResponse = {
   bars: [], cut_list: [], cut_list_total_cost_usd: null, cut_list_total_weight_kg: null,
-  check_report: PASSING_REPORT, suggestions: [],
+  check_report: PASSING_REPORT, suggestions: [], cost_suggestion: null,
 };
 
 describe("AssistantCard next-step chips", () => {

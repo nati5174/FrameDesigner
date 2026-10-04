@@ -25,7 +25,11 @@ from framegen.catalog import load_catalog  # noqa: E402
 from framegen.checks import run_checks  # noqa: E402
 from framegen.generate.table import generate_table  # noqa: E402
 from framegen.spec import TableSpec  # noqa: E402
-from framegen.suggestions import FixCandidate, suggest_fixes  # noqa: E402
+from framegen.suggestions import (  # noqa: E402
+    FixCandidate,
+    suggest_cheaper_profile,
+    suggest_fixes,
+)
 
 FrameSpec = TableSpec
 
@@ -99,16 +103,51 @@ _CASES: list[Case] = [
         ),
         expected_fix_types=["centre_legs"],
     ),
-    Case(
-        id="cheaper_profile_passing_40_to_45",
-        # 800×600×900 at 50 kg on 40-series passes cleanly; 45-series is cheaper
+]
+
+
+# ── Cheaper-profile test cases (standalone function) ──────────────────────────
+
+@dataclass
+class CheaperCase:
+    id: str
+    spec: FrameSpec
+    expects_candidate: bool          # True → must return a FixCandidate
+    expected_profile: str | None = None  # profile_series we expect
+    min_saving_usd: float | None = None  # minimum saving expected
+
+
+_CHEAPER_CASES: list[CheaperCase] = [
+    CheaperCase(
+        id="40_series_finds_cheaper_passing_profile",
         spec=FrameSpec(
             frame_type="table",
             width_mm=800, depth_mm=600, height_mm=900,
             profile_series="40-series", target_load_kg=50,
         ),
-        expected_fix_types=["cheaper_profile"],
-        expects_empty=False,
+        expects_candidate=True,
+        # 30-series is the cheapest alternative that passes for this light load
+        expected_profile="30-series",
+    ),
+    CheaperCase(
+        id="1500_700_100kg_40_to_45_saving_31",
+        spec=FrameSpec(
+            frame_type="table",
+            width_mm=1500, depth_mm=700, height_mm=900,
+            profile_series="40-series", target_load_kg=100,
+        ),
+        expects_candidate=True,
+        expected_profile="45-series",
+        min_saving_usd=31.0,
+    ),
+    CheaperCase(
+        id="cheapest_20_series_no_suggestion",
+        spec=FrameSpec(
+            frame_type="table",
+            width_mm=400, depth_mm=300, height_mm=500,
+            profile_series="20-series", target_load_kg=5,
+        ),
+        expects_candidate=False,
     ),
 ]
 
@@ -198,13 +237,68 @@ class CaseResult:
     note: str = ""
 
 
+@dataclass
+class CheaperResult:
+    id: str
+    candidate: FixCandidate | None
+    passed: bool
+    note: str = ""
+
+
+def run_cheaper() -> list[CheaperResult]:
+    results: list[CheaperResult] = []
+    for case in _CHEAPER_CASES:
+        profile = _CATALOG.profiles[case.spec.profile_series]
+        bars = generate_table(case.spec, profile)
+        report = run_checks(bars, case.spec, profile)
+        candidate = suggest_cheaper_profile(case.spec, profile, report, _CATALOG)
+
+        if not case.expects_candidate:
+            passed = candidate is None
+            note = "expects None"
+        else:
+            if candidate is None:
+                passed = False
+                note = "expected candidate, got None"
+            else:
+                notes: list[str] = []
+                ok = True
+                if (
+                    case.expected_profile
+                    and candidate.spec.profile_series != case.expected_profile
+                ):
+                    ok = False
+                    notes.append(
+                        f"profile: expected {case.expected_profile!r},"
+                        f" got {candidate.spec.profile_series!r}"
+                    )
+                if case.min_saving_usd is not None:
+                    # Extract saving from trade_off string
+                    import re as _re
+                    m = _re.search(r"\$([0-9.]+)", candidate.trade_off)
+                    saving = float(m.group(1)) if m else 0.0
+                    if saving < case.min_saving_usd:
+                        ok = False
+                        notes.append(
+                            f"saving ${saving:.2f}"
+                            f" < expected ${case.min_saving_usd:.2f}"
+                        )
+                passed = ok
+                note = "; ".join(notes)
+
+        results.append(
+            CheaperResult(id=case.id, candidate=candidate, passed=passed, note=note)
+        )
+    return results
+
+
 def run() -> list[CaseResult]:
     results: list[CaseResult] = []
     for case in _CASES:
         profile = _CATALOG.profiles[case.spec.profile_series]
         bars = generate_table(case.spec, profile)
         report = run_checks(bars, case.spec, profile)
-        fixes = suggest_fixes(case.spec, profile, report, _CATALOG)
+        fixes = suggest_fixes(case.spec, profile, report)
 
         if case.expects_empty:
             validity = (fixes == [])
@@ -235,6 +329,7 @@ def run() -> list[CaseResult]:
 
 def main() -> None:
     results = run()
+    cheaper_results = run_cheaper()
     print("\nSuggestions eval")
     print("=" * 60)
 
@@ -274,9 +369,24 @@ def main() -> None:
             print(f"  note          : {r.note}")
 
     print("\n" + "=" * 60)
-    print("Summary")
+    print("Summary — structural fixes")
     for s in signals:
         print(f"  {s:<12}: {passes[s]}/{totals[s]}")
+
+    print("\nCost suggestion eval")
+    print("=" * 60)
+    for r in cheaper_results:
+        status = "PASS" if r.passed else "FAIL"
+        profile_str = r.candidate.spec.profile_series if r.candidate else "None"
+        trade_off = r.candidate.trade_off if r.candidate else "-"
+        print(f"\n[{status}] {r.id}")
+        print(f"  profile : {profile_str}")
+        print(f"  trade_off: {trade_off}")
+        if r.note:
+            print(f"  note    : {r.note}")
+
+    n_cheaper_pass = sum(1 for r in cheaper_results if r.passed)
+    print(f"\nCost suggestion: {n_cheaper_pass}/{len(cheaper_results)}")
 
 
 if __name__ == "__main__":

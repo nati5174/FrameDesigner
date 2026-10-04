@@ -15,7 +15,7 @@ from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
 from framegen.parser import parse as parser_parse
 from framegen.spec import ShelfUnitSpec, TableSpec
-from framegen.suggestions import FixCandidate, suggest_fixes
+from framegen.suggestions import FixCandidate, suggest_cheaper_profile, suggest_fixes
 
 load_dotenv(override=False)
 
@@ -123,7 +123,8 @@ def _run_frame(
         cut_charge_usd=_CATALOG.cut_charge_usd,
     )
     check_report = run_checks(bars, spec, profile)
-    suggestions = suggest_fixes(spec, profile, check_report, _CATALOG)
+    suggestions = suggest_fixes(spec, profile, check_report)
+    cost_suggestion = suggest_cheaper_profile(spec, profile, check_report, _CATALOG)
 
     return {
         "bars": [
@@ -150,6 +151,9 @@ def _run_frame(
         "cut_list_total_weight_kg": cut_list.total_weight_kg,
         "check_report": dataclasses.asdict(check_report),
         "suggestions": [_serialise_candidate(c) for c in suggestions],
+        "cost_suggestion": (
+            _serialise_candidate(cost_suggestion) if cost_suggestion else None
+        ),
     }
 
 

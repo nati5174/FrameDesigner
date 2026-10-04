@@ -302,7 +302,7 @@ def _build_cost(
     return total_mm * price_per_mm + n_cuts * cut_charge_usd
 
 
-def _suggest_cheaper_profile(
+def suggest_cheaper_profile(
     spec: TableSpec | ShelfUnitSpec,
     profile: Profile,
     check_report: CheckReport,
@@ -391,20 +391,14 @@ def suggest_fixes(
     spec: TableSpec | ShelfUnitSpec,
     profile: Profile,
     check_report: CheckReport,
-    catalog: Catalog | None = None,
 ) -> list[FixCandidate]:
     """
     Return up to three verified fix candidates for the given spec and report.
-    Returns [] when the frame is fully healthy or when catalog data is missing.
+    Returns [] when the frame is fully healthy.
     """
     if isinstance(spec, ShelfUnitSpec):
         candidates = _suggest_shelf(spec, profile, check_report)
     else:
         candidates = _suggest_table(spec, profile, check_report)
-
-    if catalog is not None and len(candidates) < 3:
-        cheaper = _suggest_cheaper_profile(spec, profile, check_report, catalog)
-        if cheaper is not None:
-            candidates = (candidates + [cheaper])[:3]
 
     return candidates

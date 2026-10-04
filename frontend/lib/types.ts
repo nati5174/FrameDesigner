@@ -198,4 +198,5 @@ export interface FrameResponse {
   cut_list_total_weight_kg: number | null;
   check_report: CheckReport;
   suggestions: FixCandidate[];
+  cost_suggestion: FixCandidate | null;
 }
