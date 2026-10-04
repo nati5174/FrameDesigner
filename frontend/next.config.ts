@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       { source: "/frame", destination: `${BACKEND}/frame` },
       { source: "/parse", destination: `${BACKEND}/parse` },
       { source: "/suggest", destination: `${BACKEND}/suggest` },
+      { source: "/edit", destination: `${BACKEND}/edit` },
     ];
   },
 };
