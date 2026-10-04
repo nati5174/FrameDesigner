@@ -2,6 +2,7 @@
 
 import type {
   AssistantCard as AssistantCardType,
+  FieldChange,
   FixCandidate,
   FrameResponse,
   FrameSpec,
@@ -63,6 +64,22 @@ function fieldLabel(raw: string): string {
   return raw.replace(/_mm$|_kg$/, "").replace(/_/g, " ");
 }
 
+function fieldUnit(key: string): string {
+  if (key.endsWith("_mm")) return " mm";
+  if (key.endsWith("_kg")) return " kg";
+  return "";
+}
+
+function formatChange(c: FieldChange): string {
+  const label = fieldLabel(c.field);
+  const cap = label.charAt(0).toUpperCase() + label.slice(1);
+  const unit = fieldUnit(c.field);
+  if (c.old != null && c.new != null) {
+    return `${cap} ${c.old}${unit} → ${c.new}${unit}`;
+  }
+  return `${cap} → ${c.new}${unit}`;
+}
+
 /**
  * Converts an API default string like "height_mm=900" into
  * a human-readable label like "Height 900 mm (default)".
@@ -115,7 +132,8 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
           </span>
           {card.changes.length > 0 && (
             <span className="text-muted text-xs">
-              {card.changes.map((c) => fieldLabel(c.field)).join(", ")} changed
+              {card.changes.slice(0, 2).map(formatChange).join(", ")}
+              {card.changes.length > 2 && ` +${card.changes.length - 2} more`}
             </span>
           )}
           {spec && onRestore && (

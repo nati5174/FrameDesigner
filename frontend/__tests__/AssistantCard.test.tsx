@@ -92,7 +92,7 @@ describe("AssistantCard edit", () => {
     expect(screen.getByTestId("card-badge")).toHaveTextContent("Updated");
   });
 
-  it("shows changed fields", () => {
+  it("shows changed fields with old and new values", () => {
     const card: AssistantCardType = {
       type: "edit",
       spec: SPEC,
@@ -100,7 +100,9 @@ describe("AssistantCard edit", () => {
       frameData: null,
     };
     render(<AssistantCard card={card} spec={SPEC} />);
-    expect(screen.getByText(/height changed/)).toBeInTheDocument();
+    // Must show "Height 900 mm → 1100 mm", not just "height changed"
+    expect(screen.getByText(/Height 900 mm → 1100 mm/)).toBeInTheDocument();
+    expect(screen.queryByText(/height changed/)).not.toBeInTheDocument();
   });
 });
 

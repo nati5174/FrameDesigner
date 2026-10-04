@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
@@ -21,7 +24,39 @@ load_dotenv(override=False)
 
 _CATALOG = load_catalog()
 
+
+def _git_commit() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).parent,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+_GIT_COMMIT = _git_commit()
+
+# Startup banner — immediately visible so a stale-process issue can be spotted
+print(
+    f"framegen  catalog=v{_CATALOG.version}  commit={_GIT_COMMIT}",
+    file=sys.stderr,
+    flush=True,
+)
+
 app = FastAPI()
+
+
+# ── /health ───────────────────────────────────────────────────────────────────
+
+@app.get("/health")
+def get_health() -> dict[str, Any]:
+    return {
+        "catalog_version": _CATALOG.version,
+        "git_commit": _GIT_COMMIT,
+    }
 
 
 # ── /parse ────────────────────────────────────────────────────────────────────

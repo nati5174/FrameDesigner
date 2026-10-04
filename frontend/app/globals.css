@@ -123,3 +123,13 @@ body { background-color: var(--bg); color: var(--text); }
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+/* Scrollbar — thin, themed track so it blends with the panel borders in dark mode */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }

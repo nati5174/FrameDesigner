@@ -32,9 +32,20 @@ function fieldLabel(raw: string): string {
   return raw.replace(/_mm$|_kg$/, "").replace(/_/g, " ");
 }
 
-function formEditText(changes: FieldChange[]): string {
-  if (changes.length === 0) return "Form edit";
-  if (changes.length === 1) return `Set ${fieldLabel(changes[0].field)} to ${changes[0].new}`;
+function fieldUnit(key: string): string {
+  if (key.endsWith("_mm")) return " mm";
+  if (key.endsWith("_kg")) return " kg";
+  return "";
+}
+
+function formEditText(changes: FieldChange[], newSpec: FrameSpec): string {
+  if (changes.length === 0) {
+    return `${newSpec.width_mm} × ${newSpec.depth_mm} × ${newSpec.height_mm} mm`;
+  }
+  if (changes.length === 1) {
+    const c = changes[0];
+    return `Set ${fieldLabel(c.field)} to ${c.new}${fieldUnit(c.field)}`;
+  }
   return `Changed ${changes.length} fields via form`;
 }
 
@@ -194,7 +205,7 @@ export function FrameDesigner() {
     async (newSpec: FrameSpec) => {
       const oldSpec = thread.currentSpec;
       const changes = oldSpec ? buildChanges(oldSpec, newSpec) : [];
-      thread.addUserEntry(formEditText(changes));
+      thread.addUserEntry(formEditText(changes, newSpec));
       thread.addLoadingEntry();
       const data = await generate(newSpec);
       const card: AssistantCard = { type: "edit", spec: newSpec, changes, frameData: data };
