@@ -197,6 +197,7 @@ export function FrameDesigner() {
           <ConversationThread
             entries={thread.entries}
             onRestoreSpec={handleRestore}
+            onChip={(text) => void submitPrompt(text)}
           />
         </div>
       )}

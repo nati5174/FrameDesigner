@@ -7,9 +7,10 @@ import { AssistantCard } from "@/components/thread/AssistantCard";
 interface Props {
   entries: ThreadEntry[];
   onRestoreSpec?: (spec: FrameSpec) => void;
+  onChip?: (text: string) => void;
 }
 
-export function ConversationThread({ entries, onRestoreSpec }: Props) {
+export function ConversationThread({ entries, onRestoreSpec, onChip }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function ConversationThread({ entries, onRestoreSpec }: Props) {
                 card={entry.card}
                 spec={entry.spec}
                 onRestore={onRestoreSpec}
+                onChip={onChip}
               />
             </div>
           </div>

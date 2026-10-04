@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AssistantCard } from "@/components/thread/AssistantCard";
-import type { AssistantCard as AssistantCardType, FrameSpec } from "@/lib/types";
+import type { AssistantCard as AssistantCardType, CheckReport, FrameResponse, FrameSpec } from "@/lib/types";
 
 const SPEC: FrameSpec = {
   frame_type: "table",
@@ -111,6 +111,65 @@ describe("AssistantCard unsupported", () => {
     expect(
       screen.getByText("This tool cannot give assembly advice.")
     ).toBeInTheDocument();
+  });
+});
+
+const PASSING_REPORT: CheckReport = {
+  collision: { passed: true, colliding_pairs: [] },
+  connectivity: { passed: true, disconnected_bar_indices: [] },
+  load: {
+    is_estimate: true, safety_factor: 3, deflection_limit_fraction: 300,
+    status: "evaluated", not_evaluated_reason: null,
+    governing_rail: null, all_rails: [], passed: true,
+  },
+  passed: true,
+  leg_check: null,
+  tipping: null,
+  not_covered: [],
+};
+
+const FRAME_DATA_PASS: FrameResponse = {
+  bars: [], cut_list: [], check_report: PASSING_REPORT, suggestions: [],
+};
+
+describe("AssistantCard next-step chips", () => {
+  it("shows common chips when load passes", () => {
+    const onChip = vi.fn();
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData: FRAME_DATA_PASS,
+    };
+    render(<AssistantCard card={card} spec={SPEC} onChip={onChip} />);
+    const chips = screen.getAllByTestId("next-step-chip");
+    expect(chips.length).toBeGreaterThanOrEqual(1);
+    expect(chips.length).toBeLessThanOrEqual(3);
+  });
+
+  it("calls onChip with chip text when clicked", () => {
+    const onChip = vi.fn();
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData: FRAME_DATA_PASS,
+    };
+    render(<AssistantCard card={card} spec={SPEC} onChip={onChip} />);
+    fireEvent.click(screen.getAllByTestId("next-step-chip")[0]);
+    expect(onChip).toHaveBeenCalledOnce();
+    expect(typeof onChip.mock.calls[0][0]).toBe("string");
+  });
+
+  it("shows no chips when onChip is not provided", () => {
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData: FRAME_DATA_PASS,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    expect(screen.queryAllByTestId("next-step-chip")).toHaveLength(0);
   });
 });
 
