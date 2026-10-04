@@ -1,5 +1,7 @@
 # Frame Designer
 
+[![CI](https://github.com/nati5174/frame-designer/actions/workflows/ci.yml/badge.svg)](https://github.com/nati5174/frame-designer/actions/workflows/ci.yml)
+
 Type a description of the frame you need and get a 3D model, cut list, load estimate, and verified fix suggestions.
 
 ![A passing frame design — workbench 1200 × 600 × 900 mm](docs/images/pass.png)
