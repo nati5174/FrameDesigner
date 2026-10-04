@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "description": "Edit eval dev set — covers all groups from chat-plan stage 4",
+  "version": "1.1",
+  "description": "Edit eval dev set — standard groups + harder LLM-needed cases",
   "prompts": [
     {
       "id": "S1",
@@ -325,6 +325,200 @@
         "outcome": "new_design",
         "spec": {"width_mm": 1500, "depth_mm": 700}
       }
+    },
+
+    {
+      "id": "H1",
+      "group": "casual",
+      "text": "bump the height up 20 cm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1100}}
+    },
+    {
+      "id": "H2",
+      "group": "casual",
+      "text": "drop the shelf",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": 300, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"shelf_height_mm": null}}
+    },
+    {
+      "id": "H3",
+      "group": "casual",
+      "text": "could you widen it by 10 cm?",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 1600}}
+    },
+    {
+      "id": "H4",
+      "group": "casual",
+      "text": "increase the height by 20cm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1100}}
+    },
+    {
+      "id": "H5",
+      "group": "casual",
+      "text": "bring the load down to 80 kg",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"target_load_kg": 80}}
+    },
+    {
+      "id": "WN1",
+      "group": "word_numbers",
+      "text": "five hundred millimetres wide",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"width_mm": 500}}
+    },
+    {
+      "id": "WN2",
+      "group": "word_numbers",
+      "text": "ten centimetres taller",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1000}}
+    },
+    {
+      "id": "WN3",
+      "group": "word_numbers",
+      "text": "heght to 1 metre",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1000}}
+    },
+    {
+      "id": "WN4",
+      "group": "word_numbers",
+      "text": "one metre high",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1000}}
+    },
+    {
+      "id": "CN1",
+      "group": "clarify_no_number",
+      "text": "make it taller",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "clarify", "missing": ["height_mm"]}
+    },
+    {
+      "id": "CN2",
+      "group": "clarify_no_number",
+      "text": "I want more load capacity",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "clarify", "missing": ["target_load_kg"]}
+    },
+    {
+      "id": "CP1",
+      "group": "compound_llm",
+      "text": "raise the whole thing 15 cm and widen by 10 cm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1050, "width_mm": 1600}}
+    },
+    {
+      "id": "CP2",
+      "group": "compound_llm",
+      "text": "increase the height by 20cm and the depth by 5cm",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "edit", "spec": {"height_mm": 1100, "depth_mm": 750}}
+    },
+    {
+      "id": "WF1",
+      "group": "wrong_field",
+      "text": "add a shelf at 400 mm",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 1200, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600, 1200, 1800],
+        "load_per_level_kg": 30, "centre_legs": false
+      },
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "UU1",
+      "group": "unsupported_unusual",
+      "text": "is it safe to use in a workshop?",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "unsupported"}
+    },
+    {
+      "id": "UU2",
+      "group": "unsupported_unusual",
+      "text": "will it last a long time?",
+      "input_spec": {
+        "frame_type": "table",
+        "width_mm": 1500, "depth_mm": 700, "height_mm": 900,
+        "profile_series": "40-series",
+        "shelf_height_mm": null, "target_load_kg": 100, "centre_legs": false
+      },
+      "expected": {"outcome": "unsupported"}
     }
   ]
 }

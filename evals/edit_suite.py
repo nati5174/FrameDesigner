@@ -207,11 +207,35 @@ def _score_prompt(
 # ── Parser runners ────────────────────────────────────────────────────────────
 
 def _run_edit(config: str, text: str, spec_in: Any) -> EditResult | None:
-    """Run edit_parse under the given config. Returns None if skipped."""
-    if config in ("llm", "dispatcher") and not os.environ.get("ANTHROPIC_API_KEY"):
-        if config == "llm":
+    """
+    Run edit_parse under the given config. Returns None if skipped.
+
+    rule_based  — LLM disabled; rule parser + unsupported check only.
+    llm         — full dispatcher (rule parser first, LLM fallback).
+                  Skipped if no API key.
+    dispatcher  — full dispatcher; LLM falls through to not_parsed
+                  when no API key.
+    """
+    import framegen.parser.edit_llm as _edit_llm_mod
+
+    if config == "rule_based":
+        # Disable the edit LLM so only the rule parser runs.
+        prev_client = _edit_llm_mod._client
+        prev_explicit = _edit_llm_mod._client_set_explicitly
+        _edit_llm_mod._client = None
+        _edit_llm_mod._client_set_explicitly = True
+        try:
+            return edit_parse(text, spec_in, None)
+        finally:
+            _edit_llm_mod._client = prev_client
+            _edit_llm_mod._client_set_explicitly = prev_explicit
+
+    if config == "llm":
+        if not os.environ.get("ANTHROPIC_API_KEY"):
             return None  # skip
-        # dispatcher without key: LLM calls fall through to not_parsed
+        return edit_parse(text, spec_in, None)
+
+    # dispatcher — full pipeline
     return edit_parse(text, spec_in, None)
 
 
