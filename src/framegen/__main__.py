@@ -47,7 +47,12 @@ def main() -> None:
     )
 
     bars = generate_table(spec, profile)
-    cut_list = build_cut_list(bars)
+    cut_list = build_cut_list(
+        bars,
+        price_per_mm=profile.price_per_mm,
+        mass_per_metre_kg=profile.mass_per_metre_kg,
+        cut_charge_usd=catalog.cut_charge_usd,
+    )
     print(format_cut_list(cut_list))
 
 

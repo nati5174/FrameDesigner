@@ -116,7 +116,12 @@ def _run_frame(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    cut_list = build_cut_list(bars)
+    cut_list = build_cut_list(
+        bars,
+        price_per_mm=profile.price_per_mm,
+        mass_per_metre_kg=profile.mass_per_metre_kg,
+        cut_charge_usd=_CATALOG.cut_charge_usd,
+    )
     check_report = run_checks(bars, spec, profile)
     suggestions = suggest_fixes(spec, profile, check_report)
 
@@ -136,9 +141,13 @@ def _run_frame(
                 "length_mm": row.length_mm,
                 "qty": row.qty,
                 "total_mm": row.total_mm,
+                "cost_usd": row.cost_usd,
+                "weight_kg": row.weight_kg,
             }
             for row in cut_list.rows
         ],
+        "cut_list_total_cost_usd": cut_list.total_cost_usd,
+        "cut_list_total_weight_kg": cut_list.total_weight_kg,
         "check_report": dataclasses.asdict(check_report),
         "suggestions": [_serialise_candidate(c) for c in suggestions],
     }

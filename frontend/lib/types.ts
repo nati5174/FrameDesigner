@@ -93,6 +93,8 @@ export interface CutListRow {
   length_mm: number;
   qty: number;
   total_mm: number;
+  cost_usd: number | null;
+  weight_kg: number | null;
 }
 
 export interface RailLoadCase {
@@ -191,6 +193,8 @@ export interface FixCandidate {
 export interface FrameResponse {
   bars: BarData[];
   cut_list: CutListRow[];
+  cut_list_total_cost_usd: number | null;
+  cut_list_total_weight_kg: number | null;
   check_report: CheckReport;
   suggestions: FixCandidate[];
 }

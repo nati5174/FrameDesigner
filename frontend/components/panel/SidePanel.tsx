@@ -206,6 +206,8 @@ function PanelContent({
           <CollapsibleSection title="Cut list" defaultOpen={false}>
             <CutList
               rows={frameData.cut_list}
+              totalCostUsd={frameData.cut_list_total_cost_usd}
+              totalWeightKg={frameData.cut_list_total_weight_kg}
               onRowHover={onCutListRowHover}
             />
           </CollapsibleSection>

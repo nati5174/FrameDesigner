@@ -4,9 +4,9 @@ import { CutList } from "@/components/panel/CutList";
 import type { CutListRow } from "@/lib/types";
 
 const ROWS: CutListRow[] = [
-  { profile_id: "HPS8-2020", length_mm: 900, qty: 4, total_mm: 3600 },
-  { profile_id: "HPS8-2020", length_mm: 1420, qty: 2, total_mm: 2840 },
-  { profile_id: "HPS8-2020", length_mm: 620, qty: 2, total_mm: 1240 },
+  { profile_id: "HPS8-2020", length_mm: 900, qty: 4, total_mm: 3600, cost_usd: null, weight_kg: null },
+  { profile_id: "HPS8-2020", length_mm: 1420, qty: 2, total_mm: 2840, cost_usd: null, weight_kg: null },
+  { profile_id: "HPS8-2020", length_mm: 620, qty: 2, total_mm: 1240, cost_usd: null, weight_kg: null },
 ];
 
 describe("CutList", () => {
