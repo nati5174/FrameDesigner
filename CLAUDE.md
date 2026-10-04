@@ -87,6 +87,20 @@ npm test        # Vitest unit tests
 npm run lint    # ESLint (eslint .)
 npx tsc --noEmit  # TypeScript type check
 npm run build   # production build (also type-checks)
+npm run test:e2e  # Playwright smoke test (requires both servers running)
+```
+
+Start both servers together (from repo root):
+
+```
+python scripts/dev.py   # frees ports 8080 and 3000, starts both servers,
+                        # waits for /health, prints catalog version and commit
+```
+
+One-time Playwright setup (from `frontend/`):
+
+```
+npx playwright install chromium
 ```
 
 Both servers must be running for the UI to work: `uvicorn framegen.api:app` on :8080 and `npm run dev` on :3000.
@@ -136,7 +150,7 @@ For bugs: reproduce, investigate, find the root cause, fix, verify. Write the fa
 - **Checks:** load math is checked against a worked beam-bending example with known numbers.
 - **Outputs:** cut list lengths sum to the total bar length in the frame; bill of materials total matches the line items.
 - **Parser:** run the eval harness and report the scores before and after.
-- **Web page:** open it and look at the frame; a passing test suite is not evidence the page works.
+- **Web page:** for any change that affects the page, run `npm run test:e2e` from `frontend/` and review the two screenshots in `frontend/e2e/screenshots/` before reporting done. A passing Vitest suite is not evidence the page works.
 
 ## Needs approval first
 

@@ -31,3 +31,6 @@ env/
 .vscode/
 .idea/
 *.swp
+
+# Dev-script logs
+logs/
