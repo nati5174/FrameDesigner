@@ -20,8 +20,9 @@ import math
 from dataclasses import dataclass
 from typing import Literal
 
-from framegen.catalog import Profile
+from framegen.catalog import Catalog, Profile
 from framegen.checks import CheckReport, run_checks
+from framegen.generate import Bar
 from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
 from framegen.spec import ShelfUnitSpec, TableSpec
@@ -32,6 +33,7 @@ FixType = Literal[
     "reduce_load",
     "centre_legs",
     "reduce_load_per_level",
+    "cheaper_profile",
 ]
 
 _SPAN_STEP_MM = 10
@@ -288,17 +290,121 @@ def _suggest_shelf(
     return candidates[:3]
 
 
+# ── Cheaper-profile suggestion ────────────────────────────────────────────────
+
+def _build_cost(
+    bars: list[Bar],
+    price_per_mm: float,
+    cut_charge_usd: float,
+) -> float:
+    total_mm: float = sum(b.length_mm for b in bars)
+    n_cuts = len({(b.profile_id, b.length_mm) for b in bars})
+    return total_mm * price_per_mm + n_cuts * cut_charge_usd
+
+
+def _suggest_cheaper_profile(
+    spec: TableSpec | ShelfUnitSpec,
+    profile: Profile,
+    check_report: CheckReport,
+    catalog: Catalog,
+) -> FixCandidate | None:
+    """
+    If the frame already passes and a cheaper profile also passes,
+    return a FixCandidate for switching profiles.  Returns None otherwise.
+    """
+    if not check_report.passed:
+        return None
+
+    current_price = profile.price_per_mm
+    if current_price is None:
+        return None
+
+    cut_charge = catalog.cut_charge_usd or 0.0
+    current_conc_warn = _conc_warns(check_report)
+
+    # Collect cheaper profiles, sorted by price ascending
+    cheaper: list[Profile] = sorted(
+        (
+            p for p in catalog.profiles.values()
+            if p.series != profile.series
+            and p.price_per_mm is not None
+            and p.price_per_mm < current_price
+        ),
+        key=lambda p: p.price_per_mm or 0.0,
+    )
+
+    for alt in cheaper:
+        alt_series = alt.series
+        alt_spec = spec.model_copy(update={"profile_series": alt_series})
+        try:
+            if isinstance(alt_spec, ShelfUnitSpec):
+                alt_bars = generate_shelf_unit(alt_spec, alt)
+            else:
+                alt_bars = generate_table(alt_spec, alt)
+        except ValueError:
+            continue
+
+        alt_report = run_checks(alt_bars, alt_spec, alt)
+        if not alt_report.passed:
+            continue
+
+        alt_conc_warn = _conc_warns(alt_report)
+        introduces_conc_warn = alt_conc_warn and not current_conc_warn
+
+        # Compute cost saving
+        try:
+            if isinstance(spec, ShelfUnitSpec):
+                cur_bars = generate_shelf_unit(spec, profile)
+            else:
+                cur_bars = generate_table(spec, profile)
+            cur_cost = _build_cost(cur_bars, current_price, cut_charge)
+            alt_cost = _build_cost(alt_bars, alt.price_per_mm, cut_charge)  # type: ignore[arg-type]
+            saving = cur_cost - alt_cost
+            if introduces_conc_warn:
+                trade_off = (
+                    f"Switch to {alt_series} (saves ~${saving:.2f} on bars). "
+                    f"Note: introduces a concentrated-load warning not present "
+                    f"on the current design."
+                )
+            else:
+                trade_off = (
+                    f"Switch to {alt_series} and save ~${saving:.2f} on bars."
+                )
+        except ValueError:
+            trade_off = f"Switch to {alt_series} for lower cost."
+
+        return FixCandidate(
+            fix_type="cheaper_profile",
+            spec=alt_spec,
+            check_report=alt_report,
+            trade_off=trade_off,
+            resolves="distributed",
+            concentrated_warning_remains=introduces_conc_warn,
+        )
+
+    return None
+
+
 # ── Public entry point ────────────────────────────────────────────────────────
 
 def suggest_fixes(
     spec: TableSpec | ShelfUnitSpec,
     profile: Profile,
     check_report: CheckReport,
+    catalog: Catalog | None = None,
 ) -> list[FixCandidate]:
     """
     Return up to three verified fix candidates for the given spec and report.
     Returns [] when the frame is fully healthy or when catalog data is missing.
     """
     if isinstance(spec, ShelfUnitSpec):
-        return _suggest_shelf(spec, profile, check_report)
-    return _suggest_table(spec, profile, check_report)
+        candidates = _suggest_shelf(spec, profile, check_report)
+    else:
+        candidates = _suggest_table(spec, profile, check_report)
+
+    if catalog is not None and len(candidates) < 3:
+        cheaper = _suggest_cheaper_profile(spec, profile, check_report, catalog)
+        if cheaper is not None:
+            candidates = (candidates + [cheaper])[:3]
+
+    return candidates

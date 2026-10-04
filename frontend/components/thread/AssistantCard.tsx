@@ -31,6 +31,8 @@ function chipFromSuggestion(s: FixCandidate): string {
       return `reduce load per level to ${s.spec.load_per_level_kg} kg`;
     case "centre_legs":
       return "add centre legs";
+    case "cheaper_profile":
+      return `use ${s.spec.profile_series}`;
   }
 }
 

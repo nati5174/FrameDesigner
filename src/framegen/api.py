@@ -123,7 +123,7 @@ def _run_frame(
         cut_charge_usd=_CATALOG.cut_charge_usd,
     )
     check_report = run_checks(bars, spec, profile)
-    suggestions = suggest_fixes(spec, profile, check_report)
+    suggestions = suggest_fixes(spec, profile, check_report, _CATALOG)
 
     return {
         "bars": [

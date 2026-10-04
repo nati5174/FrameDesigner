@@ -6,6 +6,7 @@ const FIX_LABEL: Record<FixCandidate["fix_type"], string> = {
   reduce_load:          "Reduce load",
   centre_legs:          "Add centre legs",
   reduce_load_per_level: "Reduce load per level",
+  cheaper_profile:      "Cheaper profile",
 };
 
 interface SuggestionCardProps {

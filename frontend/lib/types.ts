@@ -182,7 +182,8 @@ export interface FixCandidate {
     | "reduce_span_depth"
     | "reduce_load"
     | "centre_legs"
-    | "reduce_load_per_level";
+    | "reduce_load_per_level"
+    | "cheaper_profile";
   spec: FrameSpec;
   check_report: CheckReport;
   trade_off: string;
