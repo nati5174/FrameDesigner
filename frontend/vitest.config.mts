@@ -12,6 +12,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
     pool: "forks",
+    exclude: ["**/node_modules/**", "**/e2e/**"],
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, ".") },
