@@ -10,8 +10,16 @@ interface DimensionsFormProps {
   onGenerate: (spec: FrameSpec) => void;
 }
 
+const PROFILE_OPTIONS = [
+  { value: "20-series", label: "20 series (20×20 mm)" },
+  { value: "30-series", label: "30 series (30×30 mm)" },
+  { value: "40-series", label: "40 series (40×40 mm)" },
+  { value: "45-series", label: "45 series (45×45 mm)" },
+] as const;
+
 type Draft = {
   frame_type: "table" | "shelf_unit";
+  profile_series: string;
   width_mm: string;
   depth_mm: string;
   height_mm: string;
@@ -35,6 +43,7 @@ function toDraft(s: FrameSpec): Draft {
   const isShelf = s.frame_type === "shelf_unit";
   return {
     frame_type: s.frame_type,
+    profile_series: s.profile_series ?? "40-series",
     width_mm: String(s.width_mm),
     depth_mm: String(s.depth_mm),
     height_mm: String(s.height_mm),
@@ -53,6 +62,8 @@ function fromDraft(d: Draft): FrameSpec | null {
   const h = parseInt(d.height_mm, 10);
   if (isNaN(w) || w < 1 || isNaN(dep) || dep < 1 || isNaN(h) || h < 1) return null;
 
+  const series = d.profile_series || "40-series";
+
   if (d.frame_type === "shelf_unit") {
     const n = Math.max(3, Math.min(10, parseInt(d.level_count, 10) || 3));
     const perLevel = parseFloat(d.load_per_level_kg);
@@ -63,7 +74,7 @@ function fromDraft(d: Draft): FrameSpec | null {
       width_mm: w,
       depth_mm: dep,
       height_mm: h,
-      profile_series: "40-series",
+      profile_series: series,
       shelf_height_mm: null,
       target_load_kg: null,
       centre_legs: d.centre_legs,
@@ -83,7 +94,7 @@ function fromDraft(d: Draft): FrameSpec | null {
     depth_mm: dep,
     height_mm: h,
     shelf_height_mm: shelf,
-    profile_series: "40-series",
+    profile_series: series,
     target_load_kg: load,
     centre_legs: d.centre_legs,
     level_heights_mm: null,
@@ -135,6 +146,20 @@ export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProp
             {ft === "table" ? "Table" : "Shelf unit"}
           </button>
         ))}
+      </div>
+
+      {/* Profile series */}
+      <div>
+        <label className={LABEL}>Profile series</label>
+        <select
+          className={INPUT}
+          value={draft.profile_series}
+          onChange={(e) => set("profile_series", e.target.value)}
+        >
+          {PROFILE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* W / D / H */}

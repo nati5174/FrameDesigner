@@ -26,13 +26,14 @@ OpType = Literal["set", "add", "add_level", "remove_level", "set_level_count"]
 class Operation:
     field: str
     op: OpType
-    # set/add:          float value (mm for dimensions; kg for loads; positive/negative)
-    # set centre_legs:  bool
-    # set null:         None  (removes shelf_height_mm)
-    # remove_level:     None
-    # add_level:        float (height in mm)
-    # set_level_count:  float (treated as int)
-    value: float | bool | None
+    # set/add:            float (mm for dimensions; kg for loads; +/-)
+    # set centre_legs:    bool
+    # set null:           None  (removes shelf_height_mm)
+    # set profile_series: str  (catalog series name, e.g. "40-series")
+    # remove_level:        None
+    # add_level:           float (height in mm)
+    # set_level_count:     float (treated as int)
+    value: float | bool | str | None
 
 
 @dataclass
@@ -481,6 +482,50 @@ def _match_block(text: str) -> list[Operation]:
     return ops
 
 
+# ── Profile series matcher ────────────────────────────────────────────────────
+
+# Map of pattern → canonical series name. Part numbers (2020/3030/4040/4545)
+# and explicit series names are all recognised.
+def _profile_pat(n: str) -> re.Pattern[str]:
+    nn = n * 2  # "20" → "2020"
+    return re.compile(
+        rf'(?<!\d){n}\s*-\s*series'
+        rf'|(?<!\d){n}\s*mm\s+(?:profile|extrusion|series)'
+        rf'|(?<!\d){nn}(?!\d)',
+        re.IGNORECASE,
+    )
+
+
+_PROFILE_MAP: list[tuple[re.Pattern[str], str]] = [
+    (_profile_pat("20"), "20-series"),
+    (_profile_pat("30"), "30-series"),
+    (_profile_pat("40"), "40-series"),
+    (_profile_pat("45"), "45-series"),
+]
+
+
+def _match_profile_series(text: str) -> Operation | None:
+    """Detect profile series requests, e.g. 'use 30 series', '4040'."""
+    # Only match when preceded by an intent verb or when part number / series label
+    # is the subject of the request.
+    intent = re.compile(
+        r'(?:use|switch\s+to|change\s+(?:the\s+)?(?:profile|series)\s+to'
+        r'|upgrade\s+to|downgrade\s+to)',
+        re.IGNORECASE,
+    )
+    for pattern, series in _PROFILE_MAP:
+        m = pattern.search(text)
+        if not m:
+            continue
+        # Accept if preceded by an intent verb, or if the bare part-number /
+        # series name appears at the start of the text (e.g. "45-series please")
+        start = m.start()
+        preceding = text[:start]
+        if intent.search(preceding) or start < 10:
+            return Operation("profile_series", "set", series)
+    return None
+
+
 # ── Direction-only detection (no number → clarify) ────────────────────────────
 # Patterns that express intent but give no amount. Checked only when no
 # numbered matchers fired. Each tuple is (field_name, compiled_pattern).
@@ -556,6 +601,7 @@ _SINGLE_MATCHERS = [
     _match_level_add,
     _match_level_remove,
     _match_level_count,
+    _match_profile_series,
 ]
 
 

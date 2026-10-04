@@ -122,9 +122,12 @@ Return ONLY a JSON object — no code fences, no explanation.
        {{"field": "level_heights_mm", "op": "set_level_count", "value": <n>}}
 
    Fields for table:      width_mm, depth_mm, height_mm, shelf_height_mm,
-                          target_load_kg, centre_legs
+                          target_load_kg, centre_legs, profile_series
    Fields for shelf_unit: width_mm, depth_mm, height_mm, level_heights_mm,
-                          load_per_level_kg, centre_legs
+                          load_per_level_kg, centre_legs, profile_series
+   For profile_series use string values: "20-series", "30-series",
+   "40-series", or "45-series". "2020" → "20-series", "3030" → "30-series",
+   "4040" → "40-series", "4545" → "45-series".
 
 2. New design (user explicitly restarts: "start over", "from scratch", etc.):
 {{"result": "new_design"}}
@@ -164,6 +167,7 @@ def _spec_to_json(spec: TableSpec | ShelfUnitSpec) -> str:
             "width_mm": spec.width_mm,
             "depth_mm": spec.depth_mm,
             "height_mm": spec.height_mm,
+            "profile_series": spec.profile_series,
             "level_heights_mm": spec.level_heights_mm,
             "load_per_level_kg": spec.load_per_level_kg,
             "centre_legs": spec.centre_legs,
@@ -174,6 +178,7 @@ def _spec_to_json(spec: TableSpec | ShelfUnitSpec) -> str:
             "width_mm": spec.width_mm,
             "depth_mm": spec.depth_mm,
             "height_mm": spec.height_mm,
+            "profile_series": spec.profile_series,
             "shelf_height_mm": spec.shelf_height_mm,
             "target_load_kg": spec.target_load_kg,
             "centre_legs": spec.centre_legs,
@@ -211,8 +216,10 @@ def _parse_operation(raw_op: dict[str, Any]) -> Operation | None:
     # Normalise value types
     if op == "set":
         if value is None:
-            typed_value: float | bool | None = None
+            typed_value: float | bool | str | None = None
         elif isinstance(value, bool):
+            typed_value = value
+        elif isinstance(value, str):
             typed_value = value
         elif isinstance(value, (int, float)):
             typed_value = float(value)

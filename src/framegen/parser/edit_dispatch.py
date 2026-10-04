@@ -83,15 +83,20 @@ _FRAME_FIELDS: dict[str, set[str]] = {
     "table": {
         "width_mm", "depth_mm", "height_mm",
         "shelf_height_mm", "target_load_kg", "centre_legs",
+        "profile_series",
     },
     "shelf_unit": {
         "width_mm", "depth_mm", "height_mm",
         "level_heights_mm", "load_per_level_kg", "centre_legs",
+        "profile_series",
     },
 }
 
 # Fields that may be set to None (i.e. cleared)
 _NULLABLE_FIELDS = {"shelf_height_mm"}
+
+# Fields that take a string value (not numeric)
+_STRING_FIELDS = {"profile_series"}
 
 
 def _spec_to_dict(spec: TableSpec | ShelfUnitSpec) -> dict:  # type: ignore[type-arg]
@@ -170,10 +175,14 @@ def _apply_op(d: dict, op: Operation) -> str | None:  # type: ignore[type-arg]
     if op.op == "set":
         if op.value is None and fld not in _NULLABLE_FIELDS:
             return f"Cannot clear '{fld}'"
+        if fld in _STRING_FIELDS and not isinstance(op.value, str):
+            return f"Field '{fld}' requires a string value"
         d[fld] = op.value
         return None
 
     if op.op == "add":
+        if fld in _STRING_FIELDS:
+            return f"Cannot use 'add' on string field '{fld}'"
         if current is None:
             return f"Cannot add to '{fld}': current value is not set"
         if not isinstance(current, (int, float)):
