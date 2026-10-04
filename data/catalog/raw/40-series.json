@@ -1,6 +1,8 @@
 {
   "source": "80/20",
   "source_url": "https://8020.net/40-4040.html",
+  "source_date": "2026-10-04",
+  "source_note": "automated read, not confirmed by a person",
   "profiles": [
     {
       "part_number": "40-4040",
@@ -9,7 +11,10 @@
       "alloy": "6063-T6",
       "youngs_modulus_mpa": 68947.6,
       "yield_strength_mpa": 172.37,
-      "moment_of_inertia_mm4": 137870
+      "moment_of_inertia_mm4": 137870,
+      "price_per_metre": 44.10,
+      "price_per_mm": 0.0441,
+      "mass_per_metre_kg": 2.3589
     }
   ]
 }

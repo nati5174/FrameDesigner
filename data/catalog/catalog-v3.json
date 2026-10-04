@@ -1,0 +1,64 @@
+{
+  "version": 3,
+  "cut_charge_usd": 3.00,
+  "source_date": "2026-10-04",
+  "source_note": "automated read, not confirmed by a person",
+  "profiles": {
+    "20-series": {
+      "part_number": "20-2020",
+      "series": "20-series",
+      "profile_width_mm": 20,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 6826,
+      "price_per_metre": 13.10,
+      "price_per_mm": 0.0131,
+      "mass_per_metre_kg": 0.4411,
+      "source": "80/20",
+      "source_url": "https://8020.net/20-2020.html"
+    },
+    "30-series": {
+      "part_number": "30-3030",
+      "series": "30-series",
+      "profile_width_mm": 30,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 27221,
+      "price_per_metre": 18.10,
+      "price_per_mm": 0.0181,
+      "mass_per_metre_kg": 0.8697,
+      "source": "80/20",
+      "source_url": "https://8020.net/30-3030.html"
+    },
+    "40-series": {
+      "part_number": "40-4040",
+      "series": "40-series",
+      "profile_width_mm": 40,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 137870,
+      "price_per_metre": 44.10,
+      "price_per_mm": 0.0441,
+      "mass_per_metre_kg": 2.3589,
+      "source": "80/20",
+      "source_url": "https://8020.net/40-4040.html"
+    },
+    "45-series": {
+      "part_number": "45-4545",
+      "series": "45-series",
+      "profile_width_mm": 45,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 139604,
+      "price_per_metre": 40.20,
+      "price_per_mm": 0.0402,
+      "mass_per_metre_kg": 2.0413,
+      "source": "80/20",
+      "source_url": "https://8020.net/45-4545.html"
+    }
+  }
+}

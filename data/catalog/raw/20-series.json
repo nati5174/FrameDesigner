@@ -1,0 +1,20 @@
+{
+  "source": "80/20",
+  "source_url": "https://8020.net/20-2020.html",
+  "source_date": "2026-10-04",
+  "source_note": "automated read, not confirmed by a person",
+  "profiles": [
+    {
+      "part_number": "20-2020",
+      "series": "20-series",
+      "profile_width_mm": 20,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 6826,
+      "price_per_metre": 13.10,
+      "price_per_mm": 0.0131,
+      "mass_per_metre_kg": 0.4411
+    }
+  ]
+}

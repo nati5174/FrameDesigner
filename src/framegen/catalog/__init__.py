@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 _CATALOG_PATH = (
-    Path(__file__).parent.parent.parent.parent / "data" / "catalog" / "catalog-v2.json"
+    Path(__file__).parent.parent.parent.parent / "data" / "catalog" / "catalog-v3.json"
 )
 
 
@@ -17,6 +17,7 @@ class Profile(BaseModel):
     series: str
     profile_width_mm: float
     price_per_metre: float | None = None
+    price_per_mm: float | None = None
     mass_per_metre_kg: float | None = None
     alloy: str | None = None
     youngs_modulus_mpa: float | None = None
@@ -31,6 +32,7 @@ class Catalog(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     version: int
+    cut_charge_usd: float | None = None
     profiles: dict[str, Profile]
 
 
@@ -40,6 +42,11 @@ def load_catalog(path: Path = _CATALOG_PATH) -> Catalog:
         if profile.price_per_metre is None:
             print(
                 f"WARNING: catalog: price_per_metre missing for {profile.part_number}",
+                file=sys.stderr,
+            )
+        if profile.price_per_mm is None:
+            print(
+                f"WARNING: catalog: price_per_mm missing for {profile.part_number}",
                 file=sys.stderr,
             )
         if profile.mass_per_metre_kg is None:

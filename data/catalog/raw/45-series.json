@@ -1,0 +1,20 @@
+{
+  "source": "80/20",
+  "source_url": "https://8020.net/45-4545.html",
+  "source_date": "2026-10-04",
+  "source_note": "automated read, not confirmed by a person",
+  "profiles": [
+    {
+      "part_number": "45-4545",
+      "series": "45-series",
+      "profile_width_mm": 45,
+      "alloy": "6063-T6",
+      "youngs_modulus_mpa": 68947.6,
+      "yield_strength_mpa": 172.37,
+      "moment_of_inertia_mm4": 139604,
+      "price_per_metre": 40.20,
+      "price_per_mm": 0.0402,
+      "mass_per_metre_kg": 2.0413
+    }
+  ]
+}
