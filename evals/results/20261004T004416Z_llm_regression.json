@@ -1,0 +1,79 @@
+{
+  "timestamp": "20261004T004416Z",
+  "git_hash": "4f30ef7",
+  "prompt_file": "prompts_regression.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "llm",
+      "status": "ok",
+      "overall": "19/21",
+      "by_group": {
+        "A": "3/3",
+        "B": "1/1",
+        "C": "2/2",
+        "D": "2/2",
+        "E": "2/2",
+        "F": "4/5",
+        "G": "3/3",
+        "H": "2/3"
+      },
+      "by_field": {
+        "W": "16/17",
+        "D": "16/17",
+        "H": "17/17",
+        "S": "17/17",
+        "L": "17/17"
+      },
+      "failures": [
+        {
+          "id": "T13",
+          "text": "table 80 x 40 x 70",
+          "expected": {
+            "outcome": "spec_invalid",
+            "reason": "unitless"
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "table",
+            "W": 800.0,
+            "D": 400.0,
+            "H": 700.0,
+            "S": null,
+            "L": 100.0
+          },
+          "field_results": {}
+        },
+        {
+          "id": "T20",
+          "text": "1800mm long 600mm wide 900mm tall, 80kg",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1800,
+            "D": 600,
+            "H": 900,
+            "L": 80
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "table",
+            "W": 600.0,
+            "D": 1800.0,
+            "H": 900.0,
+            "S": null,
+            "L": 80.0
+          },
+          "field_results": {
+            "W": false,
+            "D": false,
+            "H": true,
+            "S": true,
+            "L": true
+          }
+        }
+      ]
+    }
+  ]
+}

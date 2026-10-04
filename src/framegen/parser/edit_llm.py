@@ -108,6 +108,9 @@ Return ONLY a JSON object — no code fences, no explanation.
    - centre_legs: set to true or false.
    - Convert measurements to mm (cm × 10, m × 1000).
    - Only return operations for fields the user mentioned.
+   - If the user states a direction without a specific value (e.g. "make it
+     taller", "more load capacity", "make it wider"), use rule 4
+     (insufficient_information) — do NOT invent or guess a value.
    - "can it hold N kg" or "will it hold N kg" → set target_load_kg to N
      (NOT unsupported).
 

@@ -443,6 +443,59 @@ class TestCompound:
         assert "centre_legs" in fields
 
 
+# ── Clarify (direction without amount) ───────────────────────────────────────
+
+class TestClarify:
+    def test_make_it_taller(self) -> None:
+        r = parse_edit("make it taller")
+        assert r.outcome == "clarify"
+        assert "height_mm" in r.missing
+
+    def test_shorter(self) -> None:
+        r = parse_edit("make it shorter")
+        assert r.outcome == "clarify"
+        assert "height_mm" in r.missing
+
+    def test_wider(self) -> None:
+        r = parse_edit("make it wider")
+        assert r.outcome == "clarify"
+        assert "width_mm" in r.missing
+
+    def test_narrower(self) -> None:
+        r = parse_edit("make it narrower")
+        assert r.outcome == "clarify"
+        assert "width_mm" in r.missing
+
+    def test_deeper(self) -> None:
+        r = parse_edit("make it deeper")
+        assert r.outcome == "clarify"
+        assert "depth_mm" in r.missing
+
+    def test_shallower(self) -> None:
+        r = parse_edit("make it shallower")
+        assert r.outcome == "clarify"
+        assert "depth_mm" in r.missing
+
+    def test_more_load_capacity(self) -> None:
+        r = parse_edit("I want more load capacity")
+        assert r.outcome == "clarify"
+        assert "target_load_kg" in r.missing
+
+    def test_more_capacity(self) -> None:
+        r = parse_edit("more capacity please")
+        assert r.outcome == "clarify"
+        assert "target_load_kg" in r.missing
+
+    def test_numbered_taller_is_not_clarify(self) -> None:
+        # Has a number → operations, not clarify
+        r = parse_edit("make it 100 mm taller")
+        assert r.outcome == "operations"
+
+    def test_numbered_wider_is_not_clarify(self) -> None:
+        r = parse_edit("wider by 200 mm")
+        assert r.outcome == "operations"
+
+
 # ── Not matched ───────────────────────────────────────────────────────────────
 
 class TestNotMatched:

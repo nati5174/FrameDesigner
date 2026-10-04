@@ -37,8 +37,9 @@ class Operation:
 
 @dataclass
 class EditRuleResult:
-    outcome: Literal["operations", "new_design", "not_matched"]
+    outcome: Literal["operations", "new_design", "clarify", "not_matched"]
     operations: list[Operation] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
 
 
 # ── Unit conversion ────────────────────────────────────────────────────────────
@@ -480,6 +481,68 @@ def _match_block(text: str) -> list[Operation]:
     return ops
 
 
+# ── Direction-only detection (no number → clarify) ────────────────────────────
+# Patterns that express intent but give no amount. Checked only when no
+# numbered matchers fired. Each tuple is (field_name, compiled_pattern).
+
+_DIRECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    # height
+    ("height_mm", re.compile(
+        r'(?:make\s+it\s+)?taller(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    ("height_mm", re.compile(
+        r'(?:make\s+it\s+)?shorter(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    # width
+    ("width_mm", re.compile(
+        r'(?:make\s+it\s+)?wider(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    ("width_mm", re.compile(
+        r'(?:make\s+it\s+)?narrower(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    # depth
+    ("depth_mm", re.compile(
+        r'(?:make\s+it\s+)?deeper(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    ("depth_mm", re.compile(
+        r'(?:make\s+it\s+)?shallower(?!\s+by\s+\d)(?!\s+\d)',
+        re.IGNORECASE,
+    )),
+    # load / capacity
+    ("target_load_kg", re.compile(
+        r'more\s+(?:load|capacity|weight)',
+        re.IGNORECASE,
+    )),
+    ("target_load_kg", re.compile(
+        r'(?:increase|improve|boost)\s+(?:the\s+)?(?:load|capacity|weight)',
+        re.IGNORECASE,
+    )),
+    ("target_load_kg", re.compile(
+        r'(?:higher|heavier)\s+(?:load|capacity|weight)',
+        re.IGNORECASE,
+    )),
+]
+
+
+def _clarify_fields(text: str) -> list[str]:
+    """
+    Return a deduplicated list of field names whose direction was stated
+    but no amount given. Returns [] if nothing recognisable was found.
+    """
+    seen: set[str] = set()
+    fields: list[str] = []
+    for fld, pat in _DIRECTION_PATTERNS:
+        if fld not in seen and pat.search(text):
+            seen.add(fld)
+            fields.append(fld)
+    return fields
+
+
 # ── Main parse function ───────────────────────────────────────────────────────
 
 _SINGLE_MATCHERS = [
@@ -532,4 +595,10 @@ def parse_edit(text: str) -> EditRuleResult:
 
     if ops:
         return EditRuleResult(outcome="operations", operations=ops)
+
+    # Direction word present but no amount given → ask for the missing value
+    missing = _clarify_fields(text)
+    if missing:
+        return EditRuleResult(outcome="clarify", missing=missing)
+
     return EditRuleResult(outcome="not_matched")

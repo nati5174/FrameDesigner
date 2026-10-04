@@ -11,6 +11,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
+    pool: "forks",
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, ".") },

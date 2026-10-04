@@ -463,6 +463,19 @@ def _handle_edit_or_new(
     if rule_result.outcome == "operations":
         return _apply_and_return(rule_result.operations, spec, "rule_based")
 
+    if rule_result.outcome == "clarify":
+        # Try the LLM first: it may be able to extract a value the rule parser
+        # couldn't (e.g. "ten centimetres taller" uses a word number).
+        llm_res = _llm_edit(text, spec)
+        if llm_res.outcome in ("edit", "new_design"):
+            return llm_res
+        # LLM also couldn't produce a value — clarify stands.
+        return EditResult(
+            outcome="clarify",
+            missing=rule_result.missing,
+            parser_used="rule_based",
+        )
+
     # not_matched — check unsupported, then LLM
     if _is_unsupported(text):
         return EditResult(

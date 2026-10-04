@@ -16,6 +16,58 @@ export interface FrameSpec {
   load_per_level_kg: number | null;
 }
 
+// /edit ──────────────────────────────────────────────────────────────────────
+
+export interface PartialSpec {
+  frame_type?: "table" | "shelf_unit" | null;
+  width_mm?: number | null;
+  depth_mm?: number | null;
+  height_mm?: number | null;
+  profile_series?: string | null;
+  shelf_height_mm?: number | null;
+  target_load_kg?: number | null;
+  centre_legs?: boolean | null;
+  level_heights_mm?: number[] | null;
+  load_per_level_kg?: number | null;
+}
+
+export interface FieldChange {
+  field: string;
+  old: number | string | boolean | number[] | null;
+  new: number | string | boolean | number[] | null;
+}
+
+export interface EditRequest {
+  text: string;
+  spec: FrameSpec | null;
+  pending: PartialSpec | null;
+}
+
+export interface EditResponse {
+  outcome: "new_design" | "edit" | "clarify" | "unsupported" | "spec_invalid" | "not_parsed";
+  spec: FrameSpec | null;
+  pending: PartialSpec | null;
+  changes: FieldChange[];
+  missing: string[];
+  defaults_applied: string[];
+  read_as: "edit" | "new_design" | null;
+  parser_used: "rule_based" | "llm" | "none";
+  llm_available: boolean;
+  error: string | null;
+}
+
+export type AssistantCard =
+  | { type: "new_design"; spec: FrameSpec; changes: FieldChange[]; defaults: string[]; frameData: FrameResponse | null }
+  | { type: "edit";        spec: FrameSpec; changes: FieldChange[]; frameData: FrameResponse | null }
+  | { type: "clarify";     pending: PartialSpec; missing: string[] }
+  | { type: "unsupported"; message: string }
+  | { type: "error";       message: string }
+  | { type: "loading" };
+
+export type ThreadEntry =
+  | { role: "user";      text: string }
+  | { role: "assistant"; card: AssistantCard; spec: FrameSpec | null };
+
 // /parse ─────────────────────────────────────────────────────────────────────
 
 export interface ParseResponse {
