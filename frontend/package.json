@@ -25,6 +25,9 @@
     "three": "^0.186.1",
     "vitest": "^4.1.11"
   },
+  "overrides": {
+    "picomatch": "^4"
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
