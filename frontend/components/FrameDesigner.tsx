@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { AssistantCard, FixCandidate, FrameResponse, FrameSpec } from "@/lib/types";
+import type { AssistantCard, FieldChange, FixCandidate, FrameResponse, FrameSpec } from "@/lib/types";
 import { PromptBar } from "@/components/PromptBar";
 import { SidePanel } from "@/components/panel/SidePanel";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,6 +12,29 @@ import { useFrameApi } from "@/hooks/useFrameApi";
 import { useEditApi } from "@/hooks/useEditApi";
 import { useThread } from "@/hooks/useThread";
 import { useSuggestApi } from "@/hooks/useSuggestApi";
+
+// ── Helpers for form-edit thread entries ──────────────────────────────────────
+
+function buildChanges(oldSpec: FrameSpec, newSpec: FrameSpec): FieldChange[] {
+  const keys: (keyof FrameSpec)[] = [
+    "frame_type", "width_mm", "depth_mm", "height_mm",
+    "shelf_height_mm", "target_load_kg", "centre_legs",
+    "level_heights_mm", "load_per_level_kg",
+  ];
+  return keys
+    .filter((k) => JSON.stringify(oldSpec[k]) !== JSON.stringify(newSpec[k]))
+    .map((k) => ({ field: k, old: oldSpec[k] as FieldChange["old"], new: newSpec[k] as FieldChange["new"] }));
+}
+
+function fieldLabel(raw: string): string {
+  return raw.replace(/_mm$|_kg$/, "").replace(/_/g, " ");
+}
+
+function formEditText(changes: FieldChange[]): string {
+  if (changes.length === 0) return "Form edit";
+  if (changes.length === 1) return `Set ${fieldLabel(changes[0].field)} to ${changes[0].new}`;
+  return `Changed ${changes.length} fields via form`;
+}
 
 const FrameViewerCanvas = dynamic(
   () =>
@@ -165,6 +188,24 @@ export function FrameDesigner() {
     [generate]
   );
 
+  const handleFormEdit = useCallback(
+    async (newSpec: FrameSpec) => {
+      const oldSpec = thread.currentSpec;
+      const changes = oldSpec ? buildChanges(oldSpec, newSpec) : [];
+      thread.addUserEntry(formEditText(changes));
+      thread.addLoadingEntry();
+      const data = await generate(newSpec);
+      const card: AssistantCard = { type: "edit", spec: newSpec, changes, frameData: data };
+      thread.resolveLastEntry(card, newSpec, null);
+    },
+    [generate, thread]
+  );
+
+  const handleNewDesign = useCallback(() => {
+    thread.clear();
+    setFrameData(null);
+  }, [thread]);
+
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const spec = thread.currentSpec;
@@ -173,6 +214,13 @@ export function FrameDesigner() {
     : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  const hasThread = thread.entries.length > 0;
+  const threadProps = {
+    entries: thread.entries,
+    onRestoreSpec: handleRestore,
+    onChip: (text: string) => void submitPrompt(text),
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -188,50 +236,65 @@ export function FrameDesigner() {
             onDismissError={() => {}}
           />
         </div>
+        {hasThread && (
+          <button
+            type="button"
+            onClick={handleNewDesign}
+            className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-foreground hover:border-foreground transition-colors"
+          >
+            New design
+          </button>
+        )}
         <ThemeToggle />
       </header>
 
-      {/* Conversation thread */}
-      {thread.entries.length > 0 && (
-        <div className="shrink-0 max-h-48 overflow-y-auto border-b border-border bg-background">
-          <ConversationThread
-            entries={thread.entries}
-            onRestoreSpec={handleRestore}
-            onChip={(text) => void submitPrompt(text)}
-          />
+      {/* Mobile thread strip (hidden on desktop) */}
+      {hasThread && (
+        <div className="md:hidden shrink-0 max-h-48 overflow-y-auto border-b border-border bg-background">
+          <ConversationThread {...threadProps} />
         </div>
       )}
 
-      {/* Main */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0">
-        <main className="flex-1 min-w-0 min-h-48 md:min-h-0 p-3">
-          {frameData ? (
-            <div
-              className="h-full w-full rounded-lg overflow-hidden"
-              style={{ background: "var(--bg)" }}
-            >
-              <FrameViewerCanvas
-                bars={frameData.bars}
-                dims={dims}
-                highlightLength={highlightLength}
-                frameKey={frameKey}
-              />
-            </div>
-          ) : (
-            <EmptyState onSelect={handleExampleSelect} />
-          )}
-        </main>
+      {/* Main content area */}
+      <div className="flex flex-1 min-h-0">
+        {/* Desktop thread column (hidden on mobile) */}
+        {hasThread && (
+          <aside className="hidden md:flex flex-col w-72 shrink-0 border-r border-border bg-background overflow-y-auto">
+            <ConversationThread {...threadProps} />
+          </aside>
+        )}
 
-        <SidePanel
-          spec={spec}
-          frameData={frameData}
-          loading={loading}
-          canUndo={false}
-          onGenerate={(s) => void generate(s)}
-          onApply={handleApply}
-          onUndo={() => {}}
-          onCutListRowHover={setHighlightLength}
-        />
+        {/* Viewer + side panel */}
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
+          <main className="flex-1 min-w-0 min-h-48 md:min-h-0 p-3">
+            {frameData ? (
+              <div
+                className="h-full w-full rounded-lg overflow-hidden"
+                style={{ background: "var(--bg)" }}
+              >
+                <FrameViewerCanvas
+                  bars={frameData.bars}
+                  dims={dims}
+                  highlightLength={highlightLength}
+                  frameKey={frameKey}
+                />
+              </div>
+            ) : (
+              <EmptyState onSelect={handleExampleSelect} />
+            )}
+          </main>
+
+          <SidePanel
+            spec={spec}
+            frameData={frameData}
+            loading={loading}
+            canUndo={false}
+            onGenerate={(s) => void handleFormEdit(s)}
+            onApply={handleApply}
+            onUndo={() => {}}
+            onCutListRowHover={setHighlightLength}
+          />
+        </div>
       </div>
     </div>
   );
