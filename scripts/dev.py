@@ -230,7 +230,8 @@ def main() -> None:
             # If either process dies unexpectedly, report it
             for name, proc in [("backend", backend), ("frontend", frontend)]:
                 if proc.poll() is not None:
-                    print(f"\n{name} exited with code {proc.returncode}.", file=sys.stderr)
+                    msg = f"\n{name} exited with code {proc.returncode}."
+                    print(msg, file=sys.stderr)
                     stop_all()
             time.sleep(2)
     except KeyboardInterrupt:
