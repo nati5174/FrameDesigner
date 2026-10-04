@@ -269,6 +269,80 @@ def _migrate_type(
     )
 
 
+# ── LLM bridges ───────────────────────────────────────────────────────────────
+
+
+def _llm_first_turn(text: str) -> EditResult:
+    """LLM fallback for the first turn (rule parser returned not_parsed)."""
+    from framegen.parser.edit_llm import parse_first_turn
+
+    result = parse_first_turn(text)
+
+    if result.outcome == "unsupported":
+        return EditResult(
+            outcome="unsupported",
+            error=result.unsupported_reason or _UNSUPPORTED_MESSAGE,
+            parser_used="llm",
+        )
+    if result.outcome == "clarify":
+        return EditResult(
+            outcome="clarify",
+            missing=result.missing,
+            parser_used="llm",
+        )
+    # new_design or not_matched — rule parser already failed; can't build spec
+    return EditResult(outcome="not_parsed", parser_used="none")
+
+
+def _llm_edit(
+    text: str,
+    spec: TableSpec | ShelfUnitSpec,
+) -> EditResult:
+    """LLM fallback when the rule edit parser returned not_matched."""
+    from framegen.parser.edit_llm import parse_edit_with_spec
+
+    result = parse_edit_with_spec(text, spec)
+
+    if result.outcome == "operations":
+        return _apply_and_return(result.operations, spec, "llm")
+
+    if result.outcome == "new_design":
+        from framegen.parser import parse
+        parse_result = parse(text)
+        if parse_result.outcome == "spec_valid" and parse_result.spec is not None:
+            new_spec = parse_result.spec
+            if new_spec.frame_type != spec.frame_type:
+                return _migrate_type(spec, new_spec, parse_result.defaults_applied)
+            old_dict = _spec_to_dict(spec)
+            new_dict = _spec_to_dict(new_spec)
+            changes = _build_changes(old_dict, new_dict)
+            return EditResult(
+                outcome="new_design",
+                spec=new_spec,
+                changes=changes,
+                read_as="new_design",
+                defaults_applied=parse_result.defaults_applied,
+                parser_used=parse_result.parser_used,
+            )
+        return EditResult(outcome="not_parsed", parser_used="none")
+
+    if result.outcome == "unsupported":
+        return EditResult(
+            outcome="unsupported",
+            error=result.unsupported_reason or _UNSUPPORTED_MESSAGE,
+            parser_used="llm",
+        )
+
+    if result.outcome == "clarify":
+        return EditResult(
+            outcome="clarify",
+            missing=result.missing,
+            parser_used="llm",
+        )
+
+    return EditResult(outcome="not_parsed", parser_used="none")
+
+
 # ── Turn handlers ─────────────────────────────────────────────────────────────
 
 def _handle_first_turn(text: str) -> EditResult:
@@ -290,19 +364,14 @@ def _handle_first_turn(text: str) -> EditResult:
             error=result.error,
             parser_used=result.parser_used,
         )
-    # not_parsed — check unsupported, then LLM (stage 2)
+    # not_parsed — check unsupported, then LLM
     if _is_unsupported(text):
         return EditResult(
             outcome="unsupported",
             error=_UNSUPPORTED_MESSAGE,
             parser_used="none",
         )
-    # Stage 2 will call the LLM here; for now return not_parsed
-    return EditResult(
-        outcome="not_parsed",
-        error=result.error,
-        parser_used="none",
-    )
+    return _llm_first_turn(text)
 
 
 def _handle_clarify(text: str, pending: PartialSpec) -> EditResult:
@@ -350,7 +419,8 @@ def _handle_clarify(text: str, pending: PartialSpec) -> EditResult:
             parser_used="none",
         )
 
-    # Stage 2 will try the LLM with pending context
+    # LLM with pending context: synthesise a temporary spec if possible
+    # and use the edit LLM; if not possible fall back to not_parsed
     return EditResult(outcome="not_parsed", parser_used="none")
 
 
@@ -393,7 +463,7 @@ def _handle_edit_or_new(
     if rule_result.outcome == "operations":
         return _apply_and_return(rule_result.operations, spec, "rule_based")
 
-    # not_matched — check unsupported, then LLM (stage 2)
+    # not_matched — check unsupported, then LLM
     if _is_unsupported(text):
         return EditResult(
             outcome="unsupported",
@@ -401,8 +471,7 @@ def _handle_edit_or_new(
             parser_used="none",
         )
 
-    # Stage 2 will call the LLM edit parser here
-    return EditResult(outcome="not_parsed", parser_used="none")
+    return _llm_edit(text, spec)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
