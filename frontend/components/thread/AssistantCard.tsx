@@ -7,6 +7,7 @@ import type {
   FrameSpec,
 } from "@/lib/types";
 import { Spinner } from "@/components/ui/Spinner";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface Props {
   card: AssistantCardType;
@@ -62,6 +63,30 @@ function fieldLabel(raw: string): string {
   return raw.replace(/_mm$|_kg$/, "").replace(/_/g, " ");
 }
 
+/**
+ * Converts an API default string like "height_mm=900" into
+ * a human-readable label like "Height 900 mm (default)".
+ */
+function formatDefault(raw: string): string {
+  const eq = raw.indexOf("=");
+  if (eq === -1) return raw;
+  const key = raw.slice(0, eq);
+  const val = raw.slice(eq + 1);
+  const label = fieldLabel(key);
+  const unit = key.endsWith("_mm") ? " mm" : key.endsWith("_kg") ? " kg" : "";
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)} ${val}${unit} (default)`;
+}
+
+function specSummary(spec: FrameSpec): string {
+  const parts = [
+    `${spec.width_mm} × ${spec.depth_mm} × ${spec.height_mm} mm`,
+    spec.profile_series,
+  ];
+  if (spec.target_load_kg != null) parts.push(`${spec.target_load_kg} kg`);
+  if (spec.load_per_level_kg != null) parts.push(`${spec.load_per_level_kg} kg/level`);
+  return parts.join(" · ");
+}
+
 export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
   if (card.type === "loading") {
     return (
@@ -104,24 +129,21 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
           )}
         </div>
 
+        {card.type === "new_design" && (
+          <div data-testid="spec-summary" className="px-3 py-1.5 text-xs text-muted border-b border-border">
+            {specSummary(card.spec)}
+          </div>
+        )}
+
         {card.frameData?.check_report && (
-          <div className="px-3 py-2 text-xs text-muted">
-            Load check:{" "}
-            <span
-              className={
-                card.frameData.check_report.passed
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-red-600 dark:text-red-400"
-              }
-            >
-              {card.frameData.check_report.passed ? "OK" : "Failed"}
-            </span>
+          <div className="px-3 py-2 border-b border-border">
+            <StatusBadge checkReport={card.frameData.check_report} />
           </div>
         )}
 
         {card.type === "new_design" && card.defaults.length > 0 && (
-          <div className="px-3 py-1.5 text-xs text-muted border-t border-border">
-            Defaults applied: {card.defaults.join(", ")}
+          <div className="px-3 py-1.5 text-xs text-muted border-b border-border">
+            {card.defaults.map(formatDefault).join(" · ")}
           </div>
         )}
 

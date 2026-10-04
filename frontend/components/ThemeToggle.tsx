@@ -14,17 +14,21 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "system";
-    const saved = localStorage.getItem("theme") as Theme | null;
-    return saved === "light" || saved === "dark" ? saved : "system";
-  });
+  // Start with "system" so first render matches server output (no localStorage on server).
+  // Load the real saved value in an effect after mount.
+  const [theme, setTheme] = useState<Theme>("system");
 
-  // Apply the initial saved theme to the DOM on mount (no setState here)
+  // Load saved theme after mount to avoid hydration mismatch (server has no
+  // localStorage). setState is intentional here — one-time post-mount sync.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = localStorage.getItem("theme") as Theme | null;
-    if (saved === "light" || saved === "dark") applyTheme(saved);
+    if (saved === "light" || saved === "dark") {
+      setTheme(saved);
+      applyTheme(saved);
+    }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggle() {
     // Cycle: system → light → dark → system

@@ -37,7 +37,7 @@ describe("AssistantCard new_design", () => {
     expect(screen.getByTestId("card-badge")).toHaveTextContent("New design");
   });
 
-  it("shows defaults applied", () => {
+  it("formats defaults as plain words (Bug 5)", () => {
     const card: AssistantCardType = {
       type: "new_design",
       spec: SPEC,
@@ -46,7 +46,23 @@ describe("AssistantCard new_design", () => {
       frameData: null,
     };
     render(<AssistantCard card={card} spec={SPEC} />);
-    expect(screen.getByText(/Defaults applied/)).toBeInTheDocument();
+    // Must show plain-word label, NOT the raw "field_name=value" string
+    expect(screen.getByText(/Height 900 mm \(default\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/height_mm=900/)).not.toBeInTheDocument();
+  });
+
+  it("shows dimension summary for new_design (Bug 6)", () => {
+    const card: AssistantCardType = {
+      type: "new_design",
+      spec: SPEC,
+      changes: [],
+      defaults: [],
+      frameData: null,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    const summary = screen.getByTestId("spec-summary");
+    expect(summary).toHaveTextContent("1500 × 700 × 900 mm");
+    expect(summary).toHaveTextContent("40-series");
   });
 
   it("calls onRestore when Restore is clicked", () => {
@@ -132,6 +148,88 @@ const FRAME_DATA_PASS: FrameResponse = {
   bars: [], cut_list: [], cut_list_total_cost_usd: null, cut_list_total_weight_kg: null,
   check_report: PASSING_REPORT, suggestions: [], cost_suggestion: null,
 };
+
+const CONCENTRATED_FAIL_REPORT: CheckReport = {
+  collision: { passed: true, colliding_pairs: [] },
+  connectivity: { passed: true, disconnected_bar_indices: [] },
+  load: {
+    is_estimate: true, safety_factor: 3, deflection_limit_fraction: 300,
+    status: "evaluated", not_evaluated_reason: null,
+    governing_rail: {
+      bar_index: 0, role: "top_rail_width", span_mm: 1500,
+      allowable_stress_mpa: 90, deflection_limit_mm: 5,
+      utilisation: 0.8, passed: true,
+      distributed: { moment_n_mm: 1000, bending_stress_mpa: 20, deflection_mm: 3, stress_passed: true, deflection_passed: true, passed: true },
+      concentrated: { moment_n_mm: 5000, bending_stress_mpa: 100, deflection_mm: 6, stress_passed: false, deflection_passed: false, passed: false },
+    },
+    all_rails: [], passed: true,
+  },
+  passed: true,
+  leg_check: null,
+  tipping: null,
+  not_covered: [],
+};
+
+const FAILING_REPORT: CheckReport = {
+  collision: { passed: true, colliding_pairs: [] },
+  connectivity: { passed: true, disconnected_bar_indices: [] },
+  load: {
+    is_estimate: true, safety_factor: 3, deflection_limit_fraction: 300,
+    status: "evaluated", not_evaluated_reason: null,
+    governing_rail: null, all_rails: [], passed: false,
+  },
+  passed: false,
+  leg_check: null,
+  tipping: null,
+  not_covered: [],
+};
+
+describe("AssistantCard load-check status (Bug 4)", () => {
+  it("shows Pass badge when load passes", () => {
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData: { ...FRAME_DATA_PASS },
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    expect(screen.getByLabelText(/Load check: Pass/)).toBeInTheDocument();
+    expect(screen.queryByText("OK")).not.toBeInTheDocument();
+  });
+
+  it("shows Pass with warning when concentrated load fails (Bug 4)", () => {
+    const frameData: FrameResponse = {
+      ...FRAME_DATA_PASS,
+      check_report: CONCENTRATED_FAIL_REPORT,
+    };
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    // Must say "Pass with warning", NOT "OK"
+    expect(screen.getByLabelText(/Load check: Pass with warning/)).toBeInTheDocument();
+    expect(screen.queryByText("OK")).not.toBeInTheDocument();
+  });
+
+  it("shows Fail badge when load check fails", () => {
+    const frameData: FrameResponse = {
+      ...FRAME_DATA_PASS,
+      check_report: FAILING_REPORT,
+    };
+    const card: AssistantCardType = {
+      type: "edit",
+      spec: SPEC,
+      changes: [],
+      frameData,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    expect(screen.getByLabelText(/Load check: Fail/)).toBeInTheDocument();
+    expect(screen.queryByText("OK")).not.toBeInTheDocument();
+  });
+});
 
 describe("AssistantCard next-step chips", () => {
   it("shows common chips when load passes", () => {

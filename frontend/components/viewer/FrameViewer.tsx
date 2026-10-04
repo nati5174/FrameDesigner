@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Grid, Bounds, useBounds, Html } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
+import { OrbitControls, Grid, Bounds, useBounds, Text } from "@react-three/drei";
 import type { BarData } from "@/lib/types";
 import { toThree } from "@/lib/coordinates";
 import { FrameBar } from "./FrameBar";
@@ -34,11 +34,41 @@ function barsWithDelays(bars: BarData[]) {
 
 function AutoFit({ bars }: { bars: BarData[] }) {
   const api = useBounds();
+  const camera = useThree((s) => s.camera);
+
   useEffect(() => {
-    // Delay until after the last bar's animation finishes (~820 ms)
+    if (bars.length === 0) return;
+
+    // Fit the camera immediately from raw bar positions (scale-independent).
+    // Bars start at scale=0 so we can't rely on Bounds here.
+    const box = new THREE.Box3();
+    for (const bar of bars) {
+      for (const pt of [bar.start, bar.end]) {
+        const [tx, ty, tz] = toThree(pt[0], pt[1], pt[2]);
+        box.expandByPoint(new THREE.Vector3(tx * MM, ty * MM, tz * MM));
+      }
+    }
+    if (!box.isEmpty()) {
+      const center = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      box.getCenter(center);
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
+      const dist = (maxDim * 0.5) / Math.tan(fov * 0.5) * 1.7;
+      camera.position.set(
+        center.x + dist * 0.55,
+        center.y + dist * 0.45,
+        center.z + dist * 0.7,
+      );
+      camera.lookAt(center);
+    }
+
+    // Re-fit via Bounds API after animation completes (~850 ms)
     const t = setTimeout(() => api.refresh().fit(), 850);
     return () => clearTimeout(t);
-  }, [bars, api]);
+  }, [bars, api, camera]);
+
   return null;
 }
 
@@ -48,6 +78,8 @@ interface DimsProps {
   bars: BarData[];
   dims: { widthMm: number; depthMm: number; heightMm: number };
 }
+
+// ─── Dimension labels (WebGL Text — no separate React roots) ─────────────────
 
 function DimensionLabels({ bars, dims }: DimsProps) {
   const bbox = useMemo(() => {
@@ -66,43 +98,35 @@ function DimensionLabels({ bars, dims }: DimsProps) {
   const { min, max } = bbox;
   const GAP = 0.07;
 
+  const textProps = {
+    fontSize: 0.028,
+    color: "#E6E3DD",
+    anchorX: "center" as const,
+    anchorY: "middle" as const,
+    outlineColor: "#0F0F14",
+    outlineWidth: 0.004,
+  };
+
   return (
     <>
       {/* Width — below front bottom edge, centred X */}
-      <Html center zIndexRange={[0, 0]}
+      <Text {...textProps}
         position={[(min.x + max.x) / 2, min.y - GAP * 0.6, max.z + GAP]}>
-        <DimPill axis="W">{dims.widthMm.toLocaleString()} mm</DimPill>
-      </Html>
+        {`W  ${dims.widthMm.toLocaleString()} mm`}
+      </Text>
 
       {/* Depth — right of right-bottom edge, centred Z */}
-      <Html center zIndexRange={[0, 0]}
+      <Text {...textProps}
         position={[max.x + GAP, min.y - GAP * 0.6, (min.z + max.z) / 2]}>
-        <DimPill axis="D">{dims.depthMm.toLocaleString()} mm</DimPill>
-      </Html>
+        {`D  ${dims.depthMm.toLocaleString()} mm`}
+      </Text>
 
       {/* Height — left of front-left edge, centred Y */}
-      <Html center zIndexRange={[0, 0]}
+      <Text {...textProps}
         position={[min.x - GAP, (min.y + max.y) / 2, max.z + GAP]}>
-        <DimPill axis="H">{dims.heightMm.toLocaleString()} mm</DimPill>
-      </Html>
+        {`H  ${dims.heightMm.toLocaleString()} mm`}
+      </Text>
     </>
-  );
-}
-
-function DimPill({ axis, children }: { axis: string; children: React.ReactNode }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      background: "rgba(15,15,20,0.72)", color: "#E6E3DD",
-      padding: "2px 8px", borderRadius: 99, fontSize: 11,
-      fontFamily: "monospace", whiteSpace: "nowrap",
-      backdropFilter: "blur(4px)",
-      border: "1px solid rgba(255,255,255,0.10)",
-      pointerEvents: "none", userSelect: "none",
-    }}>
-      <span style={{ color: "#8A8880", fontSize: 10 }}>{axis}</span>
-      {children}
-    </span>
   );
 }
 

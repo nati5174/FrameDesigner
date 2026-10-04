@@ -104,7 +104,7 @@ function fromDraft(d: Draft): FrameSpec | null {
 
 const LABEL = "text-xs text-muted mb-0.5 block";
 const INPUT =
-  "w-full rounded border border-border bg-bg px-2 py-1 text-sm text-text font-mono";
+  "w-full rounded border border-border bg-surface px-2 py-1 text-sm text-text font-mono";
 
 export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProps) {
   const [draft, setDraft] = useState<Draft>(toDraft(spec));

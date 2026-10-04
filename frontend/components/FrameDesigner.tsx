@@ -225,7 +225,7 @@ export function FrameDesigner() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-x-hidden">
       {/* Top bar */}
       <header className="shrink-0 border-b border-border bg-surface px-4 py-3 flex items-start gap-2">
         <div className="flex-1 min-w-0">
@@ -260,7 +260,7 @@ export function FrameDesigner() {
         )}
 
         {/* Viewer + side panel */}
-        <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 min-w-0">
           {/* Viewer — on mobile add bottom padding to clear the ThreadSheet handle */}
           <main className="flex-1 min-w-0 min-h-48 md:min-h-0 p-3 pb-14 md:pb-3">
             {frameData ? (

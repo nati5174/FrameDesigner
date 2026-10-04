@@ -55,18 +55,30 @@ export interface UseThread {
 }
 
 export function useThread(): UseThread {
-  const [entries, setEntries] = useState<ThreadEntry[]>(() => loadFromStorage().entries);
-  const [currentSpec, setCurrentSpec] = useState<FrameSpec | null>(
-    () => loadFromStorage().currentSpec
-  );
-  const [pending, setPending] = useState<PartialSpec | null>(
-    () => loadFromStorage().pending
-  );
+  const [entries, setEntries] = useState<ThreadEntry[]>([]);
+  const [currentSpec, setCurrentSpec] = useState<FrameSpec | null>(null);
+  const [pending, setPending] = useState<PartialSpec | null>(null);
+  // hydrated gates persistence — avoids writing empty state over saved data
+  const [hydrated, setHydrated] = useState(false);
 
-  // Persist on every change
+  // Load saved state after mount (keeps first render identical to server,
+  // preventing a hydration mismatch). setState is intentional here — this is
+  // the canonical pattern for a one-time post-mount sync from an external store.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    const saved = loadFromStorage();
+    setEntries(saved.entries);
+    setCurrentSpec(saved.currentSpec);
+    setPending(saved.pending);
+    setHydrated(true);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Persist on every change, but only after the initial load
+  useEffect(() => {
+    if (!hydrated) return;
     saveToStorage({ entries, currentSpec, pending });
-  }, [entries, currentSpec, pending]);
+  }, [entries, currentSpec, pending, hydrated]);
 
   const addUserEntry = useCallback((text: string) => {
     setEntries((prev) => [...prev, { role: "user", text }]);
