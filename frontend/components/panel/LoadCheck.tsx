@@ -124,10 +124,36 @@ export function LoadCheck({ checkReport }: LoadCheckProps) {
         </div>
       )}
 
+      {gov && !gov.concentrated.passed && (
+        <p className="text-xs text-warn leading-relaxed">
+          ⚠ Concentrated-load case fails — the frame may not handle a single
+          heavy load at one point, even though the distributed case passes.
+          Distribute the load or reduce it.
+        </p>
+      )}
+
       <p className="text-xs text-muted">
         These are estimates with a {load.safety_factor}× safety factor.
+        The headline (Pass/Fail) assumes the load is spread evenly.
         Verify before building.
       </p>
+
+      <details className="text-xs text-muted">
+        <summary className="cursor-pointer select-none hover:text-text">
+          What these estimates do not cover
+        </summary>
+        <ul className="mt-1 ml-3 list-disc space-y-0.5 leading-relaxed">
+          <li>Joint failure (T-nut pull-out, bracket shear, bolt torque)</li>
+          <li>Frame racking under lateral load</li>
+          <li>Dynamic loads, impact, vibration, fatigue</li>
+          <li>Shear stress and stress concentrations at slots or holes</li>
+          <li>Shelf load (not added to top-rail check)</li>
+          <li>Self-weight of bars and tabletop surface</li>
+          <li>Uneven floor or soft/pivoting mounts</li>
+          <li>Certified structural analysis — verify with an engineer before
+            any safety-critical use</li>
+        </ul>
+      </details>
 
       {!collision.passed && (
         <p className="text-xs text-fail">

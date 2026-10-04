@@ -59,8 +59,8 @@ class LegCheck:
 
     K = 2.0 (fixed-free) with L_eff = K × H.  Assumes the unit is anchored
     to a wall or braced against racking; not valid for a freestanding unit
-    that can sway.  Compressive stress is always not_evaluated because
-    cross_section_area_mm2 is not in the catalog.
+    that can sway.  Compressive stress is evaluated when cross_section_area_mm2
+    is present in the catalog; otherwise compressive_stress_status = 'not_evaluated'.
     """
 
     is_estimate: bool           # always True

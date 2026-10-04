@@ -255,6 +255,26 @@
       "id": "L2", "group": "L",
       "text": "bookcase 600 x 300mm",
       "expected": {"outcome": "spec_valid", "frame_type": "shelf_unit", "W": 600, "D": 300, "H": 1800, "defaults": ["height_mm=1800"]}
+    },
+    {
+      "id": "M1", "group": "M",
+      "text": "shelf unit 900 x 400 x 2000mm, 12 levels",
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "M2", "group": "M",
+      "text": "shelf unit 900 x 400 x 1800mm, shelves at 200mm and 300mm",
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "M3", "group": "M",
+      "text": "workbench 1500 x 700 with 2 shelves",
+      "expected": {"outcome": "spec_invalid"}
+    },
+    {
+      "id": "N1", "group": "N",
+      "text": "workbench with shelves, 1500 x 700",
+      "expected": {"outcome": "spec_invalid"}
     }
   ]
 }

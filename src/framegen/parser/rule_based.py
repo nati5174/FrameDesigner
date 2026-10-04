@@ -76,6 +76,25 @@ _SHELF_H_KW = re.compile(
 
 _SHELF_H_RADIUS = 80  # chars around a shelf/level/tier keyword
 
+# Word-number count phrases: "four levels", "six shelves", …
+_WORD_COUNT_RE = re.compile(
+    r'(?<!\w)(two|three|four|five|six|seven|eight|nine|ten)'
+    r'\s*[-\s]?(?:shelf|shelves|level|levels|tier|tiers)(?!\w)',
+    re.IGNORECASE,
+)
+_WORD_TO_N: dict[str, int] = {
+    "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+# "per level", "per shelf", "per tier" — unambiguous shelf-unit language
+_PER_LEVEL_RE = re.compile(
+    r'(?<!\w)per\s+(?:level|shelf|tier)(?!\w)',
+    re.IGNORECASE,
+)
+# "shelves" plural standalone — ambiguous without a count; must not silently
+# become a table, so the table parser returns not_parsed to let the LLM decide.
+_SHELVES_PLURAL_RE = re.compile(r'(?<!\w)shelves(?!\w)', re.IGNORECASE)
+
 
 # ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -281,6 +300,8 @@ def _try_parse_shelf_unit(
       (b) Shelf-unit type words (bookcase, shelving unit, rack, …).
     """
     has_signal = bool(_SHELF_UNIT_RE.search(text))
+    has_count = bool(_LEVEL_COUNT_RE.search(text)) or bool(_WORD_COUNT_RE.search(text))
+    has_per_level = bool(_PER_LEVEL_RE.search(text))
 
     block_indices: set[int] = set()
     if block is not None:
@@ -294,11 +315,12 @@ def _try_parse_shelf_unit(
     shelf_vals = _shelf_nearby_values(text, tokens, block_indices, count_pos)
     has_two_shelves = len(shelf_vals) >= 2
 
-    if not has_signal and not has_two_shelves:
+    if not has_signal and not has_two_shelves and not has_count and not has_per_level:
         return None
 
     if block is None:
-        return None
+        # Signals present but no dimension block — cannot build spec; go to LLM.
+        return _NOT_PARSED
 
     for raw_n, raw_u in block.raw_vals:
         if raw_u == "" and raw_n < _UNITLESS_SMALL:
@@ -326,10 +348,17 @@ def _try_parse_shelf_unit(
             levels = [v for v in levels if v < H - 1.0]
             levels.append(H)
     else:
-        # Signal word without explicit heights — use count or default 3
+        # Signal word without explicit heights — use count or default 3.
+        # User-supplied counts are NOT clamped: "2 shelves" → 2 levels → spec_invalid;
+        # "12 levels" → 12 levels → spec_invalid. Only the implicit default 3 is safe.
         count_m = _LEVEL_COUNT_RE.search(text)
-        n = int(count_m.group(1)) if count_m else 3
-        n = max(3, min(n, 10))
+        word_m = _WORD_COUNT_RE.search(text)
+        if count_m:
+            n = int(count_m.group(1))
+        elif word_m:
+            n = _WORD_TO_N[word_m.group(1).lower()]
+        else:
+            n = 3
         levels = _evenly_spaced_levels(H, n)
 
     # Load per level
@@ -401,6 +430,12 @@ def parse(text: str) -> ParseResult:  # noqa: C901
     shelf_result = _try_parse_shelf_unit(text, tokens, block)
     if shelf_result is not None:
         return shelf_result
+
+    # "shelves" plural without a count or explicit heights cannot be resolved by
+    # the rule parser.  Return not_parsed so the LLM can decide (shelf unit vs
+    # table with multiple shelves).
+    if _SHELVES_PLURAL_RE.search(text):
+        return _NOT_PARSED
 
     # ── Slot candidates ───────────────────────────────────────────────────────
     slots: dict[str, list[float]] = {

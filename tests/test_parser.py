@@ -221,6 +221,60 @@ class TestRuleBasedRejections:
         assert "check the units" in r.error
 
 
+# ── Shelf-unit signal phrases ─────────────────────────────────────────────────
+
+class TestShelfUnitSignals:
+    """Word-number counts and 'per level' must not be silently dropped as table."""
+
+    def test_word_count_becomes_shelf_unit(self) -> None:
+        from framegen.spec import ShelfUnitSpec
+        # "four levels" + "per level" — the original bug
+        r = rb_parse("2000 x 400 x 1800, four levels, 80 kg per level")
+        assert r.outcome == "spec_valid", f"got {r.outcome}: {r.error}"
+        assert isinstance(r.spec, ShelfUnitSpec), "must be ShelfUnitSpec, not table"
+        assert r.spec.load_per_level_kg == pytest.approx(80.0)
+        assert r.spec.level_heights_mm is not None
+        assert len(r.spec.level_heights_mm) == 4
+
+    def test_per_level_only_becomes_shelf_unit(self) -> None:
+        from framegen.spec import ShelfUnitSpec
+        # "per level" alone (no word count) is enough to signal shelf unit
+        r = rb_parse("1200 x 500 x 1800, 50 kg per level")
+        assert r.outcome == "spec_valid", f"got {r.outcome}: {r.error}"
+        assert isinstance(r.spec, ShelfUnitSpec)
+        assert r.spec.load_per_level_kg == pytest.approx(50.0)
+
+    def test_digit_count_word_load(self) -> None:
+        from framegen.spec import ShelfUnitSpec
+        # digit count, no word number — existing capability; load on per-level phrase
+        r = rb_parse("900 x 400 x 1800, 3 levels, 30 kg per level")
+        assert r.outcome == "spec_valid"
+        assert isinstance(r.spec, ShelfUnitSpec)
+        assert len(r.spec.level_heights_mm) == 3  # type: ignore[arg-type]
+
+    def test_word_count_too_few_is_invalid(self) -> None:
+        # 2 < minimum 3 → spec_invalid (count must not be silently clamped)
+        r = rb_parse("1500 x 700 with 2 shelves")
+        assert r.outcome == "spec_invalid"
+
+    def test_word_count_too_many_is_invalid(self) -> None:
+        # 12 > maximum 10 → spec_invalid
+        r = rb_parse("shelf unit 900 x 400 x 2000, 12 levels")
+        assert r.outcome == "spec_invalid"
+
+    def test_shelves_plural_no_count_not_parsed(self) -> None:
+        # "shelves" plural without count or explicit heights → ambiguous → not_parsed
+        r = rb_parse("workbench with shelves, 1500 x 700")
+        assert r.outcome == "not_parsed"
+
+    def test_singular_shelf_still_works(self) -> None:
+        # "shelf" singular (single under-shelf on table) must still work
+        r = rb_parse("1500x700 bench, lower shelf")
+        assert r.outcome == "spec_valid"
+        assert r.spec is not None
+        assert r.spec.shelf_height_mm == pytest.approx(300.0)  # type: ignore[union-attr]
+
+
 # ── LLM parser (mocked) ───────────────────────────────────────────────────────
 
 class TestLLMParser:
