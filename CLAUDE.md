@@ -95,12 +95,22 @@ API endpoints:
 
 ```
 GET  /frame   width, depth, height, shelf?, series?, load_kg?, centre_legs?
-              → bars, cut list, check_report, suggestions
+              → bars, cut_list (with cost/weight), check_report, suggestions, cost_suggestion
+POST /frame   {"spec": SpecOut}
+              → same as GET /frame
 POST /parse   {"text": "<500 chars>"}
               → outcome, spec, error, defaults_applied, parser_used, llm_available
 POST /suggest {"spec": FrameSpec, "original_request": str}
               → {"suggestions": [FixCandidate, ...]}
+POST /edit    {"text": "<500 chars>", "spec": SpecOut | null, "pending": PartialSpec | null}
+              → outcome, spec, pending, changes, missing, defaults_applied,
+                read_as, parser_used, llm_available, error
 ```
+
+`suggestions` — up to 3 structural fix candidates (reduce span, reduce load, centre legs).
+`cost_suggestion` — a single `FixCandidate | null` for switching to a cheaper profile that also passes; never competes with structural fixes.
+
+Profile series (v3 catalog): `20-series`, `30-series`, `40-series`, `45-series`. Default is `40-series`.
 
 ## How to work
 

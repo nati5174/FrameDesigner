@@ -43,29 +43,29 @@ The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `
 
   A spec outside these ranges is rejected (`spec_invalid`) with the message:
   `<field> <value> exceeds maximum <limit> <unit> — check the units`
-- **FixCandidate**: fix type (`reduce_span_width`, `reduce_span_depth`, `reduce_load`, `centre_legs`), modified `FrameSpec`, verified `CheckReport`, template `trade_off` string, `resolves` field (which load case the fix targets), and `concentrated_warning_remains`.
+- **FixCandidate**: fix type (`reduce_span_width`, `reduce_span_depth`, `reduce_load`, `centre_legs`, `reduce_load_per_level`, `cheaper_profile`), modified `FrameSpec`, verified `CheckReport`, template `trade_off` string, `resolves` field (which load case the fix targets), and `concentrated_warning_remains`.
 - **Bar**: profile id, start point, end point, length (mm), role (leg, centre_leg, rail, brace, shelf support).
 - **Joint**: the two bars it connects, position, connector type.
 - **Frame**: list of bars, list of joints, the spec it came from.
 - **CheckReport**: pass/fail and details for collision, connectivity, and load; the load section carries the safety factor and an "estimate" label.
-- **CutList**: bars grouped by profile and length, with quantities.
-- **BOM**: line items (part id, description, quantity, unit price, source) and a total.
+- **CutList**: bars grouped by profile and length, with quantities. Each row carries `cost_usd` and `weight_kg` when catalog pricing is available; totals `total_cost_usd` and `total_weight_kg` are also returned.
+- **BOM**: line items (part id, description, quantity, unit price, source) and a total. (Cut list done; BOM not started.)
 
 ## Modules
 
 | Module | Responsibility | Depends on | Status |
 |---|---|---|---|
-| `catalog/` | Load raw parts data, validate it, write a versioned catalog file | nothing | done (v2, one profile) |
-| `spec.py` | `FrameSpec` model and validation rules | nothing | done |
-| `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table) |
-| `checks/` | Collision, connectivity, load estimate | catalog | done |
-| `outputs/` | Cut list and BOM | catalog | cut list done; BOM not started |
-| `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher | spec | done |
-| `suggestions/` | Generate and verify fix candidates for failing load checks; pure code, no LLM | spec, generate, checks | done |
+| `catalog/` | Load raw parts data, validate it, write a versioned catalog file | nothing | done (v3, four profiles) |
+| `spec.py` | `TableSpec` / `ShelfUnitSpec` models and validation rules | nothing | done |
+| `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table + shelf unit) |
+| `checks/` | Collision, connectivity, load estimate, leg check, tipping | catalog | done |
+| `outputs/` | Cut list (with cost and weight); BOM not started | catalog | cut list done |
+| `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher (`/parse`); edit parser (`/edit`) | spec | done |
+| `suggestions/` | `suggest_fixes` (structural, ≤3); `suggest_cheaper_profile` (standalone, cost saving) | spec, generate, checks | done |
 | `suggestions/rank.py` | Rank candidates and write one sentence per fix; only imported by `api.py` | suggestions, anthropic SDK | done |
-| `api.py` | `/frame`, `/parse`, and `/suggest` endpoints | all of the above | done |
-| `evals/` | Benchmark prompts, scoring, logged runs | parser, generate, checks | done (dev + regression + test prompt sets; harness runs) |
-| `frontend/` | Next.js App Router UI; parse input, 3D viewer, cut list, checks, suggestions | api | done |
+| `api.py` | `/frame`, `/parse`, `/suggest`, `/edit` endpoints | all of the above | done |
+| `evals/` | Parser eval (`run.py`), edit eval (`edit_suite.py`), suggestions eval (`suggestions_suite.py`) | parser, generate, checks | done |
+| `frontend/` | Next.js 16 App Router; chat thread, 3D viewer, spec/cut list/suggestions panel, mobile sheets | api | done (stages 1–9) |
 
 Dependencies point one way. `generate`, `checks`, `outputs`, and `suggestions/__init__.py` must not import `parser` or `suggestions/rank.py`, so the core runs and tests without an API key.
 
@@ -74,7 +74,19 @@ Dependencies point one way. `generate`, `checks`, `outputs`, and `suggestions/__
 - Raw source files in `data/catalog/raw/`, each with its origin noted
 - The pipeline validates them (required fields, positive dimensions, units) and writes `data/catalog/catalog-vN.json`
 - Code reads only the versioned file
-- v1: profile geometry only; v2: adds alloy, E, σ_y, I (source: https://8020.net/40-4040.html)
+- v1: profile geometry only; v2: adds alloy, E, σ_y, I (source: 8020.net/40-4040.html)
+- v3: four profiles (20/30/40/45-series), adds `price_per_mm`, `mass_per_metre_kg`, `cut_charge_usd` (prices read 2026-10-04, not independently verified — treated as estimates)
+
+### v3 profiles
+
+| Series | I (mm⁴) | price/mm (USD) | mass/m (kg) |
+|---|---|---|---|
+| 20-series (2020) | 6 826 | 0.0131 | 0.441 |
+| 30-series (3030) | 27 221 | 0.0181 | 0.870 |
+| 40-series (4040) | 137 870 | 0.0441 | 2.359 |
+| 45-series (4545) | 139 604 | 0.0402 | 2.041 |
+
+`cut_charge_usd = 3.00` per unique cut (profile × length combination). Cost row = `total_mm × price_per_mm + qty × cut_charge_usd`.
 
 ## Load estimate
 
@@ -179,7 +191,9 @@ Without centre legs the governing span is 2920 mm (δ = 16.73 mm, fails).
 
 ## Suggestions
 
-When `check_report.load.passed` is `False` (distributed fails) or the concentrated case warns, up to three fix candidates are generated by `src/framegen/suggestions/__init__.py`.
+### Structural fixes (`suggestions/__init__.py` — `suggest_fixes`)
+
+When `check_report.load.passed` is `False` (distributed fails) or the concentrated case warns, up to three fix candidates are generated.
 
 **Trigger:** distributed fails → target distributed pass; only concentrated warns → target concentrated pass.
 
@@ -194,11 +208,20 @@ Centre legs:         set centre_legs=True, verify
 
 Every candidate is verified by `generate_table + run_checks`. Only verified passes are offered. Span candidates are rounded down to the nearest 10 mm; load candidates to the nearest 5 kg.
 
-**`GET /frame`** always returns suggestions with template `trade_off` text (no LLM).
+### Cost suggestion (`suggestions/__init__.py` — `suggest_cheaper_profile`)
 
-**`POST /suggest`** recomputes suggestions server-side, then calls `suggestions/rank.py` if `ANTHROPIC_API_KEY` is set. The LLM may reorder candidates but must not add or drop any. Every number in a sentence must appear verbatim in the candidate's verified data; sentences that fail this guard are replaced with template text.
+Separate from structural fixes. Called directly by `_run_frame()` in `api.py` and returned as `cost_suggestion` (a single `FixCandidate | None`), not in the `suggestions` array.
 
-**Evals:** `evals/suggestions_suite.py` — four signals per case: validity, coverage, count, minimality (the next-step-worse value must fail).
+- Only fires when `check_report.passed == True` (frame currently passes)
+- Finds the cheapest catalog profile (by `price_per_mm`) that is cheaper than the current profile and whose frame also passes all checks
+- Sets `concentrated_warning_remains = True` if the cheaper profile introduces a new concentrated-load warning not present on the current design
+- Never competes with structural fixes for the three-slot limit
+
+**`GET /frame` and `POST /frame`** return `suggestions` (up to 3 structural) and `cost_suggestion` (cheaper profile, or null).
+
+**`POST /suggest`** recomputes structural suggestions server-side, then calls `suggestions/rank.py` if `ANTHROPIC_API_KEY` is set. The LLM may reorder candidates but must not add or drop any. Every number in a sentence must appear verbatim in the candidate's verified data; sentences that fail this guard are replaced with template text.
+
+**Evals:** `evals/suggestions_suite.py` — structural fixes: validity, coverage, count, minimality. Cost suggestion: separate cases testing `suggest_cheaper_profile` directly.
 
 ## Evals
 
@@ -268,19 +291,76 @@ python -m evals.run --config rule_based|llm|dispatcher|all --file dev|regression
 Reports: overall pass rate, per-group pass rate, per-field pass rate (W/D/H/S/L).
 Results committed to `evals/results/`. `prompts_test.json` is user-written and never read during parser work.
 
+## `/edit` endpoint
+
+`POST /edit` is the primary endpoint used by the chat frontend for every turn (first and subsequent). It replaces `/parse` for user interactions; `/parse` is kept for the eval harness.
+
+**Request:**
+```json
+{ "text": "<≤500 chars>", "spec": "<SpecOut | null>", "pending": "<PartialSpec | null>" }
+```
+
+**Response outcomes:**
+
+| Outcome | `spec` | Notes |
+|---|---|---|
+| `new_design` | complete | First turn or explicit "start over"; dimensions carried over on type change |
+| `edit` | complete | One or more fields updated; others unchanged |
+| `clarify` | null | One or two fields missing; `pending` partial spec returned for next turn |
+| `unsupported` | null | Request outside scope; fixed message |
+| `spec_invalid` | null | Out-of-range value; `error` field has reason |
+| `not_parsed` | null | Parse failure |
+
+**Parser dispatch:**
+1. Rule-based parser (`parser/edit_rule.py`) — handles field-set operations, add/subtract, shelf edits, level edits, profile switches, unsupported keywords
+2. If `not_matched` → LLM edit parser (`parser/edit_llm.py`) when `ANTHROPIC_API_KEY` is set
+3. Unsupported detection runs after the rule step
+
+After `/edit` returns a spec, the frontend calls `POST /frame` to get bars, cut list, and check report.
+
+## Chat frontend (stages 1–9)
+
+The frontend is a persistent conversation. Each turn appends to a thread; the 3D viewer and details panel stay live.
+
+**Thread state (`hooks/useThread.ts`):**
+- Serialised to `localStorage` on every change (loading entries filtered); hydrated on mount
+- "New design" button clears both React state and `localStorage`
+
+**Per-turn flow:**
+1. User types → `POST /edit` → returns outcome + (spec or pending)
+2. If `new_design` or `edit` → `POST /frame` → updates viewer, cut list, check report
+3. Each assistant card shows next-step buttons: verified suggestions when load fails/warns, otherwise common edit chips
+
+**Mobile layout (stage 9):**
+- `ThreadSheet` (`components/thread/ThreadSheet.tsx`): fixed bottom sheet, collapsed = 48 px handle, expanded = 70 vh
+- `DetailsSheet` (`components/panel/DetailsSheet.tsx`): slide-up overlay with dimensions/load/cut list; triggered by a floating button
+- Desktop: three-column layout (thread column | viewer | side panel) unchanged
+
 ## Build order
 
 1. Catalog pipeline ✓
 2. Spec and frame generator ✓
 3. Checks ✓
-4. Cut list and BOM (cut list done)
-5. Prompt parser ✓
+4. Cut list (with cost and weight) ✓ — BOM not started
+5. Prompt parser (`/parse`) ✓
 6. Eval harness ✓
 7. Frontend (Next.js) ✓
 8. Suggestions module ✓
-   a. suggestions/__init__.py (pure code) ✓
-   b. FrameSpec.centre_legs + generator extension ✓
-   c. suggestions/rank.py + POST /suggest ✓
+   a. `suggestions/__init__.py` — structural fixes ✓
+   b. `FrameSpec.centre_legs` + generator extension ✓
+   c. `suggestions/rank.py` + `POST /suggest` ✓
    d. Web Apply button ✓
    e. Suggestions eval suite ✓
-9. Release work (hosting, real catalogs, CAD export)
+9. Multi-profile catalog v3 (20/30/40/45-series, pricing) ✓
+10. Cost suggestion (`suggest_cheaper_profile`, separate `cost_suggestion` field) ✓
+11. Edit parser + `/edit` endpoint ✓
+    a. Rule-based edit parser ✓
+    b. LLM edit parser ✓
+    c. Edit eval suite (dev + regression) ✓
+12. Chat frontend (stages 1–9) ✓
+    a. Thread core + per-turn spec history ✓
+    b. Next-step buttons ✓
+    c. Desktop 3-column layout + form sync ✓
+    d. localStorage persistence (stage 8) ✓
+    e. Mobile sheets — ThreadSheet + DetailsSheet (stage 9) ✓
+13. Release work (hosting, real catalogs, CAD export)
