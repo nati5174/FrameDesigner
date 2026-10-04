@@ -50,6 +50,8 @@ function makeReport(
       passed,
     },
     passed,
+    leg_check: null,
+    tipping: null,
   };
 }
 

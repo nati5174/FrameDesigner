@@ -11,23 +11,38 @@ interface DimensionsFormProps {
 }
 
 type Draft = {
+  frame_type: "table" | "shelf_unit";
   width_mm: string;
   depth_mm: string;
   height_mm: string;
+  // table
   shelf_height_mm: string;
-  profile_series: string;
   target_load_kg: string;
+  // shelf unit
+  level_count: string;
+  load_per_level_kg: string;
   centre_legs: boolean;
 };
 
+function evenly(h: number, n: number): number[] {
+  const levels: number[] = [];
+  for (let i = 1; i <= n; i++) levels.push(Math.round((h * i) / n));
+  levels[levels.length - 1] = h; // exact top
+  return levels;
+}
+
 function toDraft(s: FrameSpec): Draft {
+  const isShelf = s.frame_type === "shelf_unit";
   return {
+    frame_type: s.frame_type,
     width_mm: String(s.width_mm),
     depth_mm: String(s.depth_mm),
     height_mm: String(s.height_mm),
-    shelf_height_mm: s.shelf_height_mm !== null ? String(s.shelf_height_mm) : "",
-    profile_series: s.profile_series,
-    target_load_kg: String(s.target_load_kg),
+    shelf_height_mm: s.shelf_height_mm != null ? String(s.shelf_height_mm) : "",
+    target_load_kg: s.target_load_kg != null ? String(s.target_load_kg) : "100",
+    level_count: isShelf && s.level_heights_mm ? String(s.level_heights_mm.length) : "3",
+    load_per_level_kg:
+      s.load_per_level_kg != null ? String(s.load_per_level_kg) : "30",
     centre_legs: s.centre_legs,
   };
 }
@@ -36,27 +51,43 @@ function fromDraft(d: Draft): FrameSpec | null {
   const w = parseInt(d.width_mm, 10);
   const dep = parseInt(d.depth_mm, 10);
   const h = parseInt(d.height_mm, 10);
-  const load = parseInt(d.target_load_kg, 10);
-  if (
-    isNaN(w) || w < 1 ||
-    isNaN(dep) || dep < 1 ||
-    isNaN(h) || h < 1 ||
-    isNaN(load) || load < 0
-  ) return null;
+  if (isNaN(w) || w < 1 || isNaN(dep) || dep < 1 || isNaN(h) || h < 1) return null;
 
-  const shelf = d.shelf_height_mm.trim()
-    ? parseInt(d.shelf_height_mm, 10)
-    : null;
+  if (d.frame_type === "shelf_unit") {
+    const n = Math.max(3, Math.min(10, parseInt(d.level_count, 10) || 3));
+    const perLevel = parseFloat(d.load_per_level_kg);
+    if (isNaN(perLevel) || perLevel <= 0) return null;
+    const levels = evenly(h, n);
+    return {
+      frame_type: "shelf_unit",
+      width_mm: w,
+      depth_mm: dep,
+      height_mm: h,
+      profile_series: "40-series",
+      shelf_height_mm: null,
+      target_load_kg: null,
+      centre_legs: d.centre_legs,
+      level_heights_mm: levels,
+      load_per_level_kg: perLevel,
+    };
+  }
+
+  const load = parseFloat(d.target_load_kg);
+  if (isNaN(load) || load < 0) return null;
+  const shelf = d.shelf_height_mm.trim() ? parseInt(d.shelf_height_mm, 10) : null;
   if (shelf !== null && isNaN(shelf)) return null;
 
   return {
+    frame_type: "table",
     width_mm: w,
     depth_mm: dep,
     height_mm: h,
     shelf_height_mm: shelf,
-    profile_series: d.profile_series,
+    profile_series: "40-series",
     target_load_kg: load,
     centre_legs: d.centre_legs,
+    level_heights_mm: null,
+    load_per_level_kg: null,
   };
 }
 
@@ -68,7 +99,6 @@ export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProp
   const [draft, setDraft] = useState<Draft>(toDraft(spec));
   const [prevSpec, setPrevSpec] = useState(spec);
 
-  // Keep draft in sync when spec changes externally (e.g. from PromptBar or Apply)
   if (prevSpec !== spec) {
     setPrevSpec(spec);
     setDraft(toDraft(spec));
@@ -85,65 +115,95 @@ export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProp
   }
 
   const valid = fromDraft(draft) !== null;
+  const isShelf = draft.frame_type === "shelf_unit";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className={LABEL}>Width (mm)</label>
-          <input
-            className={INPUT}
-            type="number"
-            min={1}
-            value={draft.width_mm}
-            onChange={(e) => set("width_mm", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={LABEL}>Depth (mm)</label>
-          <input
-            className={INPUT}
-            type="number"
-            min={1}
-            value={draft.depth_mm}
-            onChange={(e) => set("depth_mm", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={LABEL}>Height (mm)</label>
-          <input
-            className={INPUT}
-            type="number"
-            min={1}
-            value={draft.height_mm}
-            onChange={(e) => set("height_mm", e.target.value)}
-          />
-        </div>
+      {/* Frame type selector */}
+      <div className="flex gap-1 rounded-md border border-border overflow-hidden text-xs">
+        {(["table", "shelf_unit"] as const).map((ft) => (
+          <button
+            key={ft}
+            type="button"
+            onClick={() => set("frame_type", ft)}
+            className={`flex-1 py-1.5 font-medium transition-colors ${
+              draft.frame_type === ft
+                ? "bg-accent text-accent-fg"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            {ft === "table" ? "Table" : "Shelf unit"}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={LABEL}>Load (kg)</label>
-          <input
-            className={INPUT}
-            type="number"
-            min={0}
-            value={draft.target_load_kg}
-            onChange={(e) => set("target_load_kg", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={LABEL}>Shelf height (mm)</label>
-          <input
-            className={INPUT}
-            type="number"
-            min={1}
-            placeholder="none"
-            value={draft.shelf_height_mm}
-            onChange={(e) => set("shelf_height_mm", e.target.value)}
-          />
-        </div>
+      {/* W / D / H */}
+      <div className="grid grid-cols-3 gap-2">
+        {(["width_mm", "depth_mm", "height_mm"] as const).map((k) => (
+          <div key={k}>
+            <label className={LABEL}>
+              {k === "width_mm" ? "Width" : k === "depth_mm" ? "Depth" : "Height"} (mm)
+            </label>
+            <input
+              className={INPUT}
+              type="number"
+              min={1}
+              value={draft[k]}
+              onChange={(e) => set(k, e.target.value)}
+            />
+          </div>
+        ))}
       </div>
+
+      {isShelf ? (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={LABEL}>Level count</label>
+            <input
+              className={INPUT}
+              type="number"
+              min={3}
+              max={10}
+              value={draft.level_count}
+              onChange={(e) => set("level_count", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Load / level (kg)</label>
+            <input
+              className={INPUT}
+              type="number"
+              min={1}
+              value={draft.load_per_level_kg}
+              onChange={(e) => set("load_per_level_kg", e.target.value)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={LABEL}>Load (kg)</label>
+            <input
+              className={INPUT}
+              type="number"
+              min={0}
+              value={draft.target_load_kg}
+              onChange={(e) => set("target_load_kg", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Shelf height (mm)</label>
+            <input
+              className={INPUT}
+              type="number"
+              min={1}
+              placeholder="none"
+              value={draft.shelf_height_mm}
+              onChange={(e) => set("shelf_height_mm", e.target.value)}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <input

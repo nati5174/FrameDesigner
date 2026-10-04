@@ -4,6 +4,7 @@ import { SuggestionCard } from "@/components/panel/SuggestionCard";
 import type { FixCandidate, FrameSpec, CheckReport } from "@/lib/types";
 
 const SPEC: FrameSpec = {
+  frame_type: "table",
   width_mm: 2300,
   depth_mm: 700,
   height_mm: 900,
@@ -11,6 +12,8 @@ const SPEC: FrameSpec = {
   profile_series: "20",
   target_load_kg: 100,
   centre_legs: false,
+  level_heights_mm: null,
+  load_per_level_kg: null,
 };
 
 const REPORT: CheckReport = {
@@ -27,6 +30,8 @@ const REPORT: CheckReport = {
     passed: true,
   },
   passed: true,
+  leg_check: null,
+  tipping: null,
 };
 
 const CANDIDATE: FixCandidate = {

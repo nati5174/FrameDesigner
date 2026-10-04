@@ -24,20 +24,11 @@ export function useFrameApi(): UseFrameApi {
     setLoading(true);
     setError(null);
 
-    const params = new URLSearchParams({
-      width: String(spec.width_mm),
-      depth: String(spec.depth_mm),
-      height: String(spec.height_mm),
-      series: spec.profile_series,
-      load_kg: String(spec.target_load_kg),
-    });
-    if (spec.shelf_height_mm !== null && spec.shelf_height_mm !== undefined) {
-      params.set("shelf", String(spec.shelf_height_mm));
-    }
-    if (spec.centre_legs) params.set("centre_legs", "true");
-
     try {
-      const res = await globalThis.fetch(`/frame?${params}`, {
+      const res = await globalThis.fetch("/frame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spec }),
         signal: controller.signal,
       });
       if (!res.ok) {

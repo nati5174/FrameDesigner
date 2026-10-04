@@ -1,10 +1,11 @@
 import type { FixCandidate } from "@/lib/types";
 
 const FIX_LABEL: Record<FixCandidate["fix_type"], string> = {
-  reduce_span_width: "Reduce width",
-  reduce_span_depth: "Reduce depth",
-  reduce_load:       "Reduce load",
-  centre_legs:       "Add centre legs",
+  reduce_span_width:    "Reduce width",
+  reduce_span_depth:    "Reduce depth",
+  reduce_load:          "Reduce load",
+  centre_legs:          "Add centre legs",
+  reduce_load_per_level: "Reduce load per level",
 };
 
 interface SuggestionCardProps {

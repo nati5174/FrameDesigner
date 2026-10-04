@@ -2,13 +2,18 @@
 // The frontend never computes pass/fail or lengths — it only displays what the API returns.
 
 export interface FrameSpec {
+  frame_type: "table" | "shelf_unit";
   width_mm: number;
   depth_mm: number;
   height_mm: number;
-  shelf_height_mm: number | null;
   profile_series: string;
-  target_load_kg: number;
+  // table fields
+  shelf_height_mm: number | null;
+  target_load_kg: number | null;
   centre_legs: boolean;
+  // shelf unit fields
+  level_heights_mm: number[] | null;
+  load_per_level_kg: number | null;
 }
 
 // /parse ─────────────────────────────────────────────────────────────────────
@@ -70,6 +75,33 @@ export interface LoadEstimate {
   passed: boolean;
 }
 
+export interface LegCheck {
+  is_estimate: boolean;
+  safety_factor: number;
+  f_total_n: number;
+  f_leg_n: number;
+  k_factor: number;
+  effective_length_mm: number;
+  buckling_status: "evaluated" | "not_evaluated";
+  buckling_not_evaluated_reason: string | null;
+  p_cr_n: number | null;
+  p_cr_allowable_n: number | null;
+  buckling_passed: boolean;
+  compressive_stress_status: "evaluated" | "not_evaluated";
+  compressive_stress_reason: string | null;
+  compressive_stress_mpa: number | null;
+  compressive_stress_allowable_mpa: number | null;
+  compressive_stress_passed: boolean | null;
+  passed: boolean;
+}
+
+export interface TippingCheck {
+  h_to_d_ratio: number;
+  threshold: number;
+  warning: boolean;
+  message: string | null;
+}
+
 export interface CollisionCheck {
   passed: boolean;
   colliding_pairs: [number, number][];
@@ -85,10 +117,17 @@ export interface CheckReport {
   connectivity: ConnectivityCheck;
   load: LoadEstimate;
   passed: boolean;
+  leg_check: LegCheck | null;
+  tipping: TippingCheck | null;
 }
 
 export interface FixCandidate {
-  fix_type: "reduce_span_width" | "reduce_span_depth" | "reduce_load" | "centre_legs";
+  fix_type:
+    | "reduce_span_width"
+    | "reduce_span_depth"
+    | "reduce_load"
+    | "centre_legs"
+    | "reduce_load_per_level";
   spec: FrameSpec;
   check_report: CheckReport;
   trade_off: string;
