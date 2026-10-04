@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useThread } from "@/hooks/useThread";
 import type { FrameSpec } from "@/lib/types";
 
@@ -17,6 +17,8 @@ const SPEC: FrameSpec = {
 };
 
 describe("useThread", () => {
+  beforeEach(() => localStorage.clear());
+
   it("starts empty", () => {
     const { result } = renderHook(() => useThread());
     expect(result.current.entries).toHaveLength(0);

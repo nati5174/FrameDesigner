@@ -1,7 +1,43 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AssistantCard, FrameSpec, PartialSpec, ThreadEntry } from "@/lib/types";
+
+const _STORAGE_KEY = "frame_designer_thread";
+
+interface Persisted {
+  entries: ThreadEntry[];
+  currentSpec: FrameSpec | null;
+  pending: PartialSpec | null;
+}
+
+function loadFromStorage(): Persisted {
+  if (typeof window === "undefined") {
+    return { entries: [], currentSpec: null, pending: null };
+  }
+  try {
+    const raw = localStorage.getItem(_STORAGE_KEY);
+    if (!raw) return { entries: [], currentSpec: null, pending: null };
+    return JSON.parse(raw) as Persisted;
+  } catch {
+    return { entries: [], currentSpec: null, pending: null };
+  }
+}
+
+function saveToStorage(data: Persisted): void {
+  try {
+    // Filter out loading entries before persisting
+    const toSave: Persisted = {
+      ...data,
+      entries: data.entries.filter(
+        (e) => !(e.role === "assistant" && e.card.type === "loading")
+      ),
+    };
+    localStorage.setItem(_STORAGE_KEY, JSON.stringify(toSave));
+  } catch {
+    // localStorage may be unavailable (private mode quota exceeded, etc.)
+  }
+}
 
 export interface UseThread {
   entries: ThreadEntry[];
@@ -19,9 +55,18 @@ export interface UseThread {
 }
 
 export function useThread(): UseThread {
-  const [entries, setEntries] = useState<ThreadEntry[]>([]);
-  const [currentSpec, setCurrentSpec] = useState<FrameSpec | null>(null);
-  const [pending, setPending] = useState<PartialSpec | null>(null);
+  const [entries, setEntries] = useState<ThreadEntry[]>(() => loadFromStorage().entries);
+  const [currentSpec, setCurrentSpec] = useState<FrameSpec | null>(
+    () => loadFromStorage().currentSpec
+  );
+  const [pending, setPending] = useState<PartialSpec | null>(
+    () => loadFromStorage().pending
+  );
+
+  // Persist on every change
+  useEffect(() => {
+    saveToStorage({ entries, currentSpec, pending });
+  }, [entries, currentSpec, pending]);
 
   const addUserEntry = useCallback((text: string) => {
     setEntries((prev) => [...prev, { role: "user", text }]);
@@ -63,6 +108,11 @@ export function useThread(): UseThread {
     setEntries([]);
     setCurrentSpec(null);
     setPending(null);
+    try {
+      localStorage.removeItem(_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
   }, []);
 
   return {

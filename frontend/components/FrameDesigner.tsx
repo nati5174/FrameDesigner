@@ -8,6 +8,8 @@ import { SidePanel } from "@/components/panel/SidePanel";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ConversationThread } from "@/components/thread/ConversationThread";
+import { ThreadSheet } from "@/components/thread/ThreadSheet";
+import { DetailsSheet } from "@/components/panel/DetailsSheet";
 import { useFrameApi } from "@/hooks/useFrameApi";
 import { useEditApi } from "@/hooks/useEditApi";
 import { useThread } from "@/hooks/useThread";
@@ -248,13 +250,6 @@ export function FrameDesigner() {
         <ThemeToggle />
       </header>
 
-      {/* Mobile thread strip (hidden on desktop) */}
-      {hasThread && (
-        <div className="md:hidden shrink-0 max-h-48 overflow-y-auto border-b border-border bg-background">
-          <ConversationThread {...threadProps} />
-        </div>
-      )}
-
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* Desktop thread column (hidden on mobile) */}
@@ -266,7 +261,8 @@ export function FrameDesigner() {
 
         {/* Viewer + side panel */}
         <div className="flex flex-col md:flex-row flex-1 min-h-0">
-          <main className="flex-1 min-w-0 min-h-48 md:min-h-0 p-3">
+          {/* Viewer — on mobile add bottom padding to clear the ThreadSheet handle */}
+          <main className="flex-1 min-w-0 min-h-48 md:min-h-0 p-3 pb-14 md:pb-3">
             {frameData ? (
               <div
                 className="h-full w-full rounded-lg overflow-hidden"
@@ -284,17 +280,39 @@ export function FrameDesigner() {
             )}
           </main>
 
-          <SidePanel
-            spec={spec}
-            frameData={frameData}
-            loading={loading}
-            canUndo={false}
-            onGenerate={(s) => void handleFormEdit(s)}
-            onApply={handleApply}
-            onUndo={() => {}}
-            onCutListRowHover={setHighlightLength}
-          />
+          {/* Desktop side panel only — DetailsSheet handles mobile */}
+          <div className="hidden md:contents">
+            <SidePanel
+              spec={spec}
+              frameData={frameData}
+              loading={loading}
+              canUndo={false}
+              onGenerate={(s) => void handleFormEdit(s)}
+              onApply={handleApply}
+              onUndo={() => {}}
+              onCutListRowHover={setHighlightLength}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Mobile-only sheets */}
+      <div className="md:hidden">
+        <DetailsSheet
+          spec={spec}
+          frameData={frameData}
+          loading={loading}
+          canUndo={false}
+          onGenerate={(s) => void handleFormEdit(s)}
+          onApply={handleApply}
+          onUndo={() => {}}
+          onCutListRowHover={setHighlightLength}
+        />
+        <ThreadSheet
+          entries={thread.entries}
+          onRestoreSpec={handleRestore}
+          onChip={(text) => void submitPrompt(text)}
+        />
       </div>
     </div>
   );
