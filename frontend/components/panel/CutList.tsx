@@ -66,26 +66,27 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover }: CutLi
                 </td>
               </tr>
             )}
-            {hasCost && (
-              <tr>
-                <td colSpan={3} className="pt-1 text-xs text-muted">
-                  Bars only, USD
-                </td>
-                <td className="pt-1 text-right text-sm font-medium text-text">
-                  ${totalCostUsd!.toFixed(2)}
-                </td>
-              </tr>
-            )}
+            <tr>
+              <td colSpan={3} className="pt-1 text-xs text-muted">
+                Bars only, USD
+              </td>
+              <td className="pt-1 text-right text-sm font-medium text-text">
+                {hasCost
+                  ? `$${totalCostUsd!.toFixed(2)}`
+                  : <span className="text-muted text-xs font-normal">n/a</span>
+                }
+              </td>
+            </tr>
           </tfoot>
         </table>
       </div>
 
-      {hasCost && (
-        <p className="text-xs text-muted leading-snug">
-          Bars only, USD. Excludes brackets and fasteners (which differ by
-          profile size), shipping and tax. Prices read on 2026-10-04.
-        </p>
-      )}
+      <p className="text-xs text-muted leading-snug">
+        {hasCost
+          ? "Bars only, USD. Excludes brackets and fasteners (which differ by profile size), shipping and tax. Prices read on 2026-10-04."
+          : "Cost not available — no price data for this profile series. Excludes brackets and fasteners, shipping and tax."
+        }
+      </p>
     </div>
   );
 }

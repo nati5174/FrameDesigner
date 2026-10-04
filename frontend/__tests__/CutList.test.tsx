@@ -30,4 +30,17 @@ describe("CutList", () => {
     render(<CutList rows={[]} />);
     expect(screen.getByText(/Total bar length/)).toBeInTheDocument();
   });
+
+  it("shows n/a and no-price disclaimer when totalCostUsd is null", () => {
+    render(<CutList rows={ROWS} totalCostUsd={null} />);
+    expect(screen.getByText("n/a")).toBeInTheDocument();
+    expect(screen.getByText(/no price data for this profile/)).toBeInTheDocument();
+  });
+
+  it("shows cost and disclaimer when totalCostUsd is provided", () => {
+    render(<CutList rows={ROWS} totalCostUsd={42.5} />);
+    expect(screen.getByText("$42.50")).toBeInTheDocument();
+    expect(screen.getByText(/Excludes brackets and fasteners/)).toBeInTheDocument();
+    expect(screen.queryByText(/no price data/)).not.toBeInTheDocument();
+  });
 });
