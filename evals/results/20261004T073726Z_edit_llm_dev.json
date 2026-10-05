@@ -1,0 +1,34 @@
+{
+  "timestamp": "20261004T073726Z",
+  "git_hash": "cf31bc5",
+  "prompt_file": "prompts_edit_dev.json",
+  "prompt_file_version": "1.1",
+  "configs": [
+    {
+      "config": "llm",
+      "status": "ok",
+      "overall": "45/45",
+      "by_group": {
+        "add": "4/4",
+        "casual": "5/5",
+        "clarify": "1/1",
+        "clarify_no_number": "2/2",
+        "compound_llm": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "profile_switch": "4/4",
+        "set": "6/6",
+        "shelf": "3/3",
+        "shelf_unit_levels": "3/3",
+        "spec_invalid": "2/2",
+        "type_change": "1/1",
+        "unsupported": "2/2",
+        "unsupported_unusual": "2/2",
+        "word_numbers": "4/4",
+        "wrong_field": "1/1"
+      },
+      "failures": []
+    }
+  ]
+}

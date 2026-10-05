@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+from framegen._llm_counter import DailyCapReached, check_and_increment
 from framegen.parser.edit_rule import Operation
 from framegen.spec import ShelfUnitSpec, TableSpec
 
@@ -191,6 +192,7 @@ def _call(
     user_text: str,
     system: str,
 ) -> str:
+    check_and_increment()
     resp = client.messages.create(
         model=_MODEL,
         max_tokens=_MAX_TOKENS,
@@ -296,6 +298,8 @@ def parse_edit_with_spec(
 
     try:
         raw = _call(client, text, system)
+    except DailyCapReached:
+        return EditLlmResult(outcome="not_matched")
     except Exception:
         return EditLlmResult(outcome="not_matched")
 
@@ -308,6 +312,8 @@ def parse_edit_with_spec(
         )
         try:
             raw = _call(client, text, retry_system)
+        except DailyCapReached:
+            return EditLlmResult(outcome="not_matched")
         except Exception:
             return EditLlmResult(outcome="not_matched")
         result = _interpret(raw)
@@ -328,6 +334,8 @@ def parse_first_turn(text: str) -> EditLlmResult:
 
     try:
         raw = _call(client, text, _FIRST_TURN_SYSTEM)
+    except DailyCapReached:
+        return EditLlmResult(outcome="not_matched")
     except Exception:
         return EditLlmResult(outcome="not_matched")
 

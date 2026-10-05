@@ -1,0 +1,180 @@
+{
+  "timestamp": "20261004T064912Z",
+  "git_hash": "cf31bc5",
+  "prompt_file": "prompts_dev.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "llm",
+      "status": "ok",
+      "overall": "49/56",
+      "by_group": {
+        "A": "7/8",
+        "B": "2/2",
+        "C": "3/3",
+        "D": "2/4",
+        "E": "2/3",
+        "F": "6/6",
+        "G": "4/4",
+        "H": "7/8",
+        "I": "2/2",
+        "J": "6/6",
+        "K": "3/3",
+        "L": "2/2",
+        "M": "2/3",
+        "N": "0/1",
+        "O": "1/1"
+      },
+      "by_field": {
+        "W": "41/42",
+        "D": "41/42",
+        "H": "42/42",
+        "S": "41/42",
+        "L": "42/42"
+      },
+      "failures": [
+        {
+          "id": "A8",
+          "text": "1500 in width, 700 deep, 900 tall",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1500,
+            "D": 700,
+            "H": 900
+          },
+          "got_outcome": "spec_invalid",
+          "got_error": "Imperial units are not supported. Please use mm, cm, or m.",
+          "got_spec": null,
+          "field_results": {}
+        },
+        {
+          "id": "D3",
+          "text": "workbench 1500 x 700 mm",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1500,
+            "D": 700,
+            "H": 900,
+            "defaults": [
+              "height_mm=900"
+            ]
+          },
+          "got_outcome": "not_parsed",
+          "got_error": "The LLM could not be reached (timeout or network error). Try again, or enter dimensions directly in the form.",
+          "got_spec": null,
+          "field_results": {}
+        },
+        {
+          "id": "D4",
+          "text": "1500x700 bench, lower shelf",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1500,
+            "D": 700,
+            "H": 900,
+            "S": 300,
+            "defaults": [
+              "height_mm=900",
+              "shelf_height_mm=300"
+            ]
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "table",
+            "W": 1500.0,
+            "D": 700.0,
+            "H": 900.0,
+            "S": null,
+            "L": 100.0
+          },
+          "field_results": {
+            "W": true,
+            "D": true,
+            "H": true,
+            "S": false,
+            "L": true
+          }
+        },
+        {
+          "id": "E3",
+          "text": "1200mm x 500mm x 1800mm, shelf 900mm",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1200,
+            "D": 500,
+            "H": 1800,
+            "S": 900
+          },
+          "got_outcome": "spec_invalid",
+          "got_error": "Value error, level_heights_mm must have at least 3 entries; got 2",
+          "got_spec": null,
+          "field_results": {}
+        },
+        {
+          "id": "H4",
+          "text": "1800mm long 600mm wide 900mm tall",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1800,
+            "D": 600,
+            "H": 900
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "table",
+            "W": 600.0,
+            "D": 1800.0,
+            "H": 900.0,
+            "S": null,
+            "L": 100.0
+          },
+          "field_results": {
+            "W": false,
+            "D": false,
+            "H": true,
+            "S": true,
+            "L": true
+          }
+        },
+        {
+          "id": "M3",
+          "text": "workbench 1500 x 700 with 2 shelves",
+          "expected": {
+            "outcome": "spec_invalid"
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "shelf_unit",
+            "W": 1500.0,
+            "D": 700.0,
+            "H": 900.0,
+            "S": null,
+            "L": 30.0
+          },
+          "field_results": {}
+        },
+        {
+          "id": "N1",
+          "text": "workbench with shelves, 1500 x 700",
+          "expected": {
+            "outcome": "spec_invalid"
+          },
+          "got_outcome": "spec_valid",
+          "got_error": null,
+          "got_spec": {
+            "frame_type": "shelf_unit",
+            "W": 1500.0,
+            "D": 700.0,
+            "H": 900.0,
+            "S": null,
+            "L": 30.0
+          },
+          "field_results": {}
+        }
+      ]
+    }
+  ]
+}

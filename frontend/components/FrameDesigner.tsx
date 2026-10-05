@@ -12,6 +12,7 @@ import { ThreadSheet } from "@/components/thread/ThreadSheet";
 import { DetailsSheet } from "@/components/panel/DetailsSheet";
 import { useFrameApi } from "@/hooks/useFrameApi";
 import { useEditApi } from "@/hooks/useEditApi";
+import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { useThread } from "@/hooks/useThread";
 import { useSuggestApi } from "@/hooks/useSuggestApi";
 
@@ -56,6 +57,8 @@ const FrameViewerCanvas = dynamic(
 );
 
 export function FrameDesigner() {
+  const serverReady = useHealthCheck();
+
   const [promptText, setPromptText]           = useState("");
   const [highlightLength, setHighlightLength] = useState<number | null>(null);
   const [frameKey, setFrameKey]               = useState(0);
@@ -234,6 +237,16 @@ export function FrameDesigner() {
     onRestoreSpec: handleRestore,
     onChip: (text: string) => void submitPrompt(text),
   };
+
+  if (!serverReady) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <p className="text-sm text-center" style={{ color: "var(--muted)" }}>
+          Starting the server, this can take up to a minute…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-x-hidden">

@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from pydantic import ValidationError
 
+from framegen._llm_counter import CAP_NOTE, DailyCapReached, check_and_increment
 from framegen.parser import _TABLE_WORD_RE, ParseResult
 from framegen.spec import ShelfUnitSpec, TableSpec
 
@@ -141,6 +142,7 @@ def _strip_fences(text: str) -> str:
 
 
 def _call(client: _AnthropicClient, user_text: str, extra_system: str = "") -> str:
+    check_and_increment()
     system = _SYSTEM + extra_system
     resp = client.messages.create(
         model=_MODEL,
@@ -293,6 +295,13 @@ def parse(text: str) -> ParseResult:
 
     try:
         raw = _call(client, user_text)
+    except DailyCapReached:
+        return ParseResult(
+            outcome="not_parsed",
+            spec=None,
+            error=CAP_NOTE,
+            parser_used="rule_based",
+        )
     except Exception:
         return ParseResult(
             outcome="not_parsed",
@@ -310,6 +319,13 @@ def parse(text: str) -> ParseResult:
         )
         try:
             raw = _call(client, user_text, extra_system=retry_system)
+        except DailyCapReached:
+            return ParseResult(
+                outcome="not_parsed",
+                spec=None,
+                error=CAP_NOTE,
+                parser_used="rule_based",
+            )
         except Exception:
             return ParseResult(
                 outcome="not_parsed",

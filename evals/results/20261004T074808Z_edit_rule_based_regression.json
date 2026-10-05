@@ -1,0 +1,24 @@
+{
+  "timestamp": "20261004T074808Z",
+  "git_hash": "cf31bc5",
+  "prompt_file": "prompts_edit_regression.json",
+  "prompt_file_version": "1.0",
+  "configs": [
+    {
+      "config": "rule_based",
+      "status": "ok",
+      "overall": "10/10",
+      "by_group": {
+        "add": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "set": "2/2",
+        "shelf": "1/1",
+        "shelf_unit_levels": "1/1",
+        "unsupported": "1/1"
+      },
+      "failures": []
+    }
+  ]
+}

@@ -1,16 +1,28 @@
 from __future__ import annotations
 
 import dataclasses
+import json
+import logging
 import os
 import subprocess
 import sys
+import time
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
+from starlette.responses import Response
 
+from framegen import _llm_counter
+from framegen._llm_counter import CAP_NOTE
 from framegen.catalog import load_catalog
 from framegen.checks import run_checks
 from framegen.generate.shelf_unit import generate_shelf_unit
@@ -39,14 +51,93 @@ def _git_commit() -> str:
 
 _GIT_COMMIT = _git_commit()
 
-# Startup banner — immediately visible so a stale-process issue can be spotted
+# Startup banner
 print(
     f"framegen  catalog=v{_CATALOG.version}  commit={_GIT_COMMIT}",
     file=sys.stderr,
     flush=True,
 )
 
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+_log = logging.getLogger("framegen")
+
+# ── Rate limiter ──────────────────────────────────────────────────────────────
+
+
+def _get_visitor_ip(request: Request) -> str:
+    """
+    Rate-limit key: leftmost value from X-Forwarded-For, or the direct
+    client host when the header is absent.
+
+    This is read directly from the header — not via uvicorn proxy flags —
+    so it behaves identically under TestClient (pass XFF explicitly) and
+    in production. A direct caller to the Render URL can spoof this by
+    prepending fake IPs; the daily SDK-call cap is the backstop for that case.
+    """
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+limiter = Limiter(key_func=_get_visitor_ip)
+
+# ── App ───────────────────────────────────────────────────────────────────────
+
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,  # type: ignore[arg-type]
+)
+
+# CORS — safe-fail default: no CORS if env var is absent
+_ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "")
+if _ALLOWED_ORIGIN:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[_ALLOWED_ORIGIN],
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+else:
+    print(
+        "WARNING: ALLOWED_ORIGIN not set; CORS disabled",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+# ── Logging middleware ────────────────────────────────────────────────────────
+
+@app.middleware("http")
+async def _log_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    request.state.llm_called = False
+    request.state.parser_used = None
+    request.state.frame_type = None
+    request.state.outcome = None
+
+    t0 = time.monotonic()
+    response = await call_next(request)
+    ms = round((time.monotonic() - t0) * 1000)
+
+    record: dict[str, Any] = {
+        "ts": datetime.now(UTC).isoformat(),
+        "endpoint": request.url.path,
+        "status": response.status_code,
+        "latency_ms": ms,
+        "llm_called": request.state.llm_called,
+        "parser_used": request.state.parser_used,
+        "frame_type": request.state.frame_type,
+        "outcome": request.state.outcome,
+    }
+    _log.info(json.dumps(record))
+    return response
 
 
 # ── /health ───────────────────────────────────────────────────────────────────
@@ -115,12 +206,21 @@ def _spec_to_out(spec: TableSpec | ShelfUnitSpec) -> SpecOut:
 
 
 @app.post("/parse")
-def post_parse(req: ParseRequest) -> ParseResponse:
-    llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
+@limiter.limit("10/minute")
+@limiter.limit("60/hour")
+def post_parse(request: Request, req: ParseRequest) -> ParseResponse:
+    llm_available = (
+        bool(os.environ.get("ANTHROPIC_API_KEY")) and not _llm_counter.cap_reached()
+    )
     result = parser_parse(req.text)
     spec_out: SpecOut | None = None
     if result.spec is not None:
         spec_out = _spec_to_out(result.spec)
+
+    request.state.llm_called = result.parser_used == "llm"
+    request.state.parser_used = result.parser_used
+    request.state.outcome = result.outcome
+
     return ParseResponse(
         outcome=result.outcome,
         spec=spec_out,
@@ -195,7 +295,9 @@ def _run_frame(
 # ── GET /frame (table only — kept for backwards compatibility) ────────────────
 
 @app.get("/frame")
+@limiter.limit("120/minute")
 def get_frame(
+    request: Request,
     width: float = Query(...),
     depth: float = Query(...),
     height: float = Query(...),
@@ -220,7 +322,10 @@ def get_frame(
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return _run_frame(spec, series)
+    result = _run_frame(spec, series)
+    request.state.frame_type = spec.frame_type
+    request.state.outcome = "pass" if result["check_report"]["passed"] else "fail"
+    return result
 
 
 # ── POST /frame (both frame types) ───────────────────────────────────────────
@@ -230,7 +335,8 @@ class PostFrameRequest(BaseModel):
 
 
 @app.post("/frame")
-def post_frame(req: PostFrameRequest) -> dict[str, Any]:
+@limiter.limit("120/minute")
+def post_frame(request: Request, req: PostFrameRequest) -> dict[str, Any]:
     s = req.spec
     series = s.profile_series
     try:
@@ -263,7 +369,10 @@ def post_frame(req: PostFrameRequest) -> dict[str, Any]:
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return _run_frame(spec, series)
+    result = _run_frame(spec, series)
+    request.state.frame_type = spec.frame_type
+    request.state.outcome = "pass" if result["check_report"]["passed"] else "fail"
+    return result
 
 
 # ── /suggest ──────────────────────────────────────────────────────────────────
@@ -274,7 +383,9 @@ class SuggestRequest(BaseModel):
 
 
 @app.post("/suggest")
-def post_suggest(req: SuggestRequest) -> dict[str, Any]:
+@limiter.limit("10/minute")
+@limiter.limit("60/hour")
+def post_suggest(request: Request, req: SuggestRequest) -> dict[str, Any]:
     series = req.spec.profile_series
     if series not in _CATALOG.profiles:
         raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
@@ -323,10 +434,14 @@ def post_suggest(req: SuggestRequest) -> dict[str, Any]:
     candidates = suggest_fixes(spec, profile, check_report)
     serialised = [_serialise_candidate(c) for c in candidates]
 
+    request.state.frame_type = spec.frame_type
+
     if serialised and os.environ.get("ANTHROPIC_API_KEY"):
         try:
             from framegen.suggestions.rank import rank_and_describe  # noqa: PLC0415
+            count_before = _llm_counter.get_count()
             serialised = rank_and_describe(serialised, req.original_request)
+            request.state.llm_called = _llm_counter.get_count() > count_before
         except Exception:
             pass
 
@@ -436,10 +551,14 @@ def _partial_internal_to_out(p: Any) -> PartialSpecOut:
 
 
 @app.post("/edit")
-def post_edit(req: EditRequest) -> EditResponse:
+@limiter.limit("10/minute")
+@limiter.limit("60/hour")
+def post_edit(request: Request, req: EditRequest) -> EditResponse:
     from framegen.parser.edit_dispatch import edit_parse  # noqa: PLC0415
 
-    llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    llm_available = (
+        bool(os.environ.get("ANTHROPIC_API_KEY")) and not _llm_counter.cap_reached()
+    )
 
     spec_in: TableSpec | ShelfUnitSpec | None = None
     if req.spec is not None:
@@ -454,6 +573,15 @@ def post_edit(req: EditRequest) -> EditResponse:
 
     result = edit_parse(req.text, spec_in, pending_in)
 
+    # Add cap note when the LLM was skipped due to the daily cap
+    error = result.error
+    if (
+        result.outcome == "not_parsed"
+        and result.error is None
+        and _llm_counter.cap_reached()
+    ):
+        error = CAP_NOTE
+
     spec_out: SpecOut | None = None
     if result.spec is not None:
         spec_out = _spec_to_out(result.spec)
@@ -467,6 +595,11 @@ def post_edit(req: EditRequest) -> EditResponse:
         for c in result.changes
     ]
 
+    request.state.llm_called = result.parser_used == "llm"
+    request.state.parser_used = result.parser_used
+    request.state.frame_type = result.spec.frame_type if result.spec else None
+    request.state.outcome = result.outcome
+
     return EditResponse(
         outcome=result.outcome,
         spec=spec_out,
@@ -477,7 +610,7 @@ def post_edit(req: EditRequest) -> EditResponse:
         read_as=result.read_as,
         parser_used=result.parser_used,
         llm_available=llm_available,
-        error=result.error,
+        error=error,
     )
 
 

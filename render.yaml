@@ -1,0 +1,21 @@
+# Render deployment — Frame Designer backend
+# Python version is pinned via .python-version at the repo root (3.11).
+# ANTHROPIC_API_KEY and ALLOWED_ORIGIN must be set manually in the Render
+# dashboard — never commit secrets to this file.
+
+services:
+  - type: web
+    name: frame-designer-api
+    env: python
+    buildCommand: pip install -e ".[dev]"
+    startCommand: >-
+      uvicorn framegen.api:app
+      --host 0.0.0.0
+      --port $PORT
+      --no-access-log
+    plan: free
+    envVars:
+      - key: ALLOWED_ORIGIN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

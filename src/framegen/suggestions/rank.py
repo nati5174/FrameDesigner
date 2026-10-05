@@ -82,6 +82,8 @@ def rank_and_describe(
     )
 
     try:
+        from framegen._llm_counter import check_and_increment  # noqa: PLC0415
+        check_and_increment()
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
