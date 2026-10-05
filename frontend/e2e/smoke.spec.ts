@@ -19,6 +19,7 @@ const PROMPT = "workbench 1500 x 700 x 900 mm, holds 100 kg";
 const VIEWPORTS = [
   { name: "1920x1080", width: 1920, height: 1080 },
   { name: "1280x800", width: 1280, height: 800 },
+  { name: "375x812", width: 375, height: 812 },
 ] as const;
 
 test.beforeAll(() => {
@@ -56,9 +57,20 @@ test("smoke: 1500×700×900 table at 100 kg — no errors, no overflow, badge, c
     await input.fill(PROMPT);
     await input.press("Enter");
 
-    // ── Wait for the status badge (there can be multiple: thread + side panel) ─
-    // Use first() to avoid strict-mode violation; all badges show the same value.
-    const badge = page.locator('[aria-label^="Load check:"]').first();
+    // ── On mobile, open the DetailsSheet so badge and cut list are visible ────
+    // On phone the SidePanel is inside a `hidden md:contents` container (display:none),
+    // so its badge is in the DOM but not visible.  Open the DetailsSheet first so the
+    // visible badge appears inside the sheet before we check for it.
+    if (vp.width < 768) {
+      const detailsBtn = page.getByRole("button", { name: /Details/ });
+      await detailsBtn.waitFor({ timeout: 25_000 });
+      await detailsBtn.click();
+    }
+
+    // ── Wait for a visible status badge ──────────────────────────────────────
+    // Use :visible so the hidden SidePanel badge (inside display:none on mobile)
+    // is not matched.  All visible badges show the same value.
+    const badge = page.locator('[aria-label^="Load check:"]:visible').first();
     await badge.waitFor({ timeout: 20_000 });
 
     // ── No horizontal overflow ────────────────────────────────────────────────

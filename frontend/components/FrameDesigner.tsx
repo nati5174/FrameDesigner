@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { AssistantCard, FieldChange, FixCandidate, FrameResponse, FrameSpec } from "@/lib/types";
 import { PromptBar } from "@/components/PromptBar";
@@ -15,6 +15,7 @@ import { useEditApi } from "@/hooks/useEditApi";
 import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { useThread } from "@/hooks/useThread";
 import { useSuggestApi } from "@/hooks/useSuggestApi";
+import { DEFAULT_SPEC } from "@/lib/examples";
 
 // ── Helpers for form-edit thread entries ──────────────────────────────────────
 
@@ -66,6 +67,7 @@ export function FrameDesigner() {
 
   const frameIdRef    = useRef(0);
   const lastPromptRef = useRef("");
+  const autoLoadedRef = useRef(false);
 
   const { loading: editing,    edit }       = useEditApi();
   const { loading: generating, error: frameError, fetch: fetchFrame } = useFrameApi();
@@ -103,6 +105,17 @@ export function FrameDesigner() {
     },
     [fetchFrame, suggest, setFrameId]
   );
+
+  // ── Auto-load default design on first visit ────────────────────────────────
+
+  useEffect(() => {
+    if (!serverReady) return;
+    if (!thread.hydrated) return;
+    if (thread.entries.length > 0 || thread.currentSpec) return;
+    if (autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+    void generate(DEFAULT_SPEC);
+  }, [serverReady, thread.hydrated, thread.entries.length, thread.currentSpec, generate]);
 
   // ── Submit prompt ──────────────────────────────────────────────────────────
 
@@ -338,6 +351,21 @@ export function FrameDesigner() {
           onChip={(text) => void submitPrompt(text)}
         />
       </div>
+
+      {/* Footer */}
+      <footer className="shrink-0 border-t border-border bg-surface px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+        <a
+          href="https://github.com/nati5174/FrameDesigner"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-foreground transition-colors"
+        >
+          GitHub
+        </a>
+        <span>
+          Load results are estimates, not certified engineering. Check the design before you build or load it.
+        </span>
+      </footer>
     </div>
   );
 }

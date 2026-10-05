@@ -1,6 +1,8 @@
 # Frame Designer
 
-[![CI](https://github.com/nati5174/frame-designer/actions/workflows/ci.yml/badge.svg)](https://github.com/nati5174/frame-designer/actions/workflows/ci.yml)
+[![CI](https://github.com/nati5174/FrameDesigner/actions/workflows/ci.yml/badge.svg)](https://github.com/nati5174/FrameDesigner/actions/workflows/ci.yml)
+
+**Live site:** https://frame-designer-five.vercel.app — the first load can take up to a minute because the free backend server sleeps when idle.
 
 Type a description of the frame you need and get a 3D model, cut list, load estimate, and verified fix suggestions.
 
@@ -124,6 +126,25 @@ All three configurations: **10/10**.
 
 Structural fixes (5 cases): validity 5/5, coverage 5/5, count 5/5, minimality 5/5.
 Cost suggestion (3 cases): **3/3**.
+
+## Deployment
+
+The app runs on two free-tier services:
+
+- **Frontend:** Next.js on [Vercel](https://vercel.com) — deploy by importing the repo and setting Root Directory to `frontend`.
+- **Backend:** FastAPI on [Render](https://render.com) — deploy as a Web Service using `render.yaml`.
+
+**Environment variables:**
+
+| Service | Variable | Value |
+|---|---|---|
+| Vercel | `BACKEND_URL` | Render service URL |
+| Render | `ANTHROPIC_API_KEY` | Your Anthropic key (set in Render dashboard — never commit) |
+| Render | `ALLOWED_ORIGIN` | Vercel production URL |
+
+Secrets are set in each platform's dashboard and never stored in the repo.
+
+**Rate limits:** 10 requests/min and 60/hr per IP on parse, edit, and suggest endpoints. A hard daily cap of 200 LLM calls falls back to the rule-based parser — no errors, just no AI enhancement.
 
 ## Tech stack
 

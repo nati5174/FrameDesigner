@@ -43,6 +43,7 @@ export interface UseThread {
   entries: ThreadEntry[];
   currentSpec: FrameSpec | null;
   pending: PartialSpec | null;
+  hydrated: boolean;
   addUserEntry: (text: string) => void;
   addLoadingEntry: () => void;
   resolveLastEntry: (
@@ -131,6 +132,7 @@ export function useThread(): UseThread {
     entries,
     currentSpec,
     pending,
+    hydrated,
     addUserEntry,
     addLoadingEntry,
     resolveLastEntry,

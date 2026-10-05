@@ -13,8 +13,7 @@ export function EmptyState({ onSelect }: EmptyStateProps) {
             Frame Designer
           </h1>
           <p className="text-sm text-muted leading-relaxed">
-            Describe an aluminium T-slot frame and get a 3D view,
-            cut list, and load estimate.
+            Describe a frame. Get a 3D model, cut list, cost and load estimate.
           </p>
         </div>
 
