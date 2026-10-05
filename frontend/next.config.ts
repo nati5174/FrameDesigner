@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       { source: "/suggest", destination: `${BACKEND}/suggest` },
       { source: "/edit", destination: `${BACKEND}/edit` },
       { source: "/cut-plan", destination: `${BACKEND}/cut-plan` },
+      { source: "/export/step", destination: `${BACKEND}/export/step` },
     ];
   },
 };

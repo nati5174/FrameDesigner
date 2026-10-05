@@ -36,6 +36,7 @@ from framegen.outputs.cut_plan import (
     plan_cuts,
 )
 from framegen.outputs.parts_list import build_parts_list
+from framegen.outputs.step_export import export_step, step_filename
 from framegen.parser import parse as parser_parse
 from framegen.spec import ShelfUnitSpec, TableSpec
 from framegen.suggestions import FixCandidate, suggest_cheaper_profile, suggest_fixes
@@ -771,6 +772,85 @@ def post_cut_plan(request: Request, req: CutPlanRequest) -> dict[str, Any]:
 
     request.state.frame_type = spec.frame_type
     return _serialise_cut_plan(result)
+
+
+# ── /export/step ──────────────────────────────────────────────────────────────
+
+class ExportStepRequest(BaseModel):
+    spec: SpecOut
+
+
+@app.post("/export/step")
+@limiter.limit("30/minute")
+def post_export_step(request: Request, req: ExportStepRequest) -> Response:
+    s = req.spec
+    series = s.profile_series
+    if series not in _CATALOG.profiles:
+        raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
+    profile = _CATALOG.profiles[series]
+
+    try:
+        if s.frame_type == "shelf_unit":
+            spec: TableSpec | ShelfUnitSpec = ShelfUnitSpec.model_validate(
+                dict(
+                    frame_type="shelf_unit",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    level_heights_mm=s.level_heights_mm or [],
+                    load_per_level_kg=s.load_per_level_kg or 30.0,
+                    centre_legs=s.centre_legs,
+                )
+            )
+        else:
+            spec = TableSpec.model_validate(
+                dict(
+                    frame_type="table",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    target_load_kg=s.target_load_kg or 100.0,
+                    shelf_height_mm=s.shelf_height_mm,
+                    centre_legs=s.centre_legs,
+                )
+            )
+    except ValidationError as exc:
+        _log.error("validation_error in post_export_step: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="I could not build a frame from that description. "
+            "Please check the dimensions and try again.",
+        ) from exc
+
+    try:
+        if isinstance(spec, ShelfUnitSpec):
+            bars = generate_shelf_unit(spec, profile)
+        else:
+            bars = generate_table(spec, profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    frame_type_label = spec.frame_type.replace("_", " ")
+    design_name = (
+        f"{frame_type_label} "
+        f"{int(spec.width_mm)}x{int(spec.depth_mm)}x{int(spec.height_mm)}"
+    )
+    content = export_step(bars, profile.profile_width_mm, design_name)
+    filename = step_filename(spec.width_mm, spec.depth_mm, spec.height_mm)
+
+    request.state.frame_type = spec.frame_type
+    request.state.outcome = "ok"
+
+    return Response(
+        content=content.encode("ascii"),
+        media_type="model/step",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(content.encode("ascii"))),
+        },
+    )
 
 
 def _serialise_candidate(c: FixCandidate) -> dict[str, Any]:

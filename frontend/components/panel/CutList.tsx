@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { CutListRow, FrameSpec } from "@/lib/types";
 import { downloadCutListCsv } from "@/lib/csvExport";
+import { downloadStepFile } from "@/lib/stepExport";
 import { usd } from "@/lib/labels";
 
 interface CutListProps {
@@ -93,14 +95,53 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover, spec }:
       </p>
 
       {spec && (
-        <button
-          type="button"
-          onClick={() => downloadCutListCsv(spec, rows, totalCostUsd ?? null)}
-          className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors"
-        >
-          Download cut list (CSV)
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => downloadCutListCsv(spec, rows, totalCostUsd ?? null)}
+            className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors"
+          >
+            Download cut list (CSV)
+          </button>
+          <StepDownloadButton spec={spec} />
+        </div>
       )}
+    </div>
+  );
+}
+
+function StepDownloadButton({ spec }: { spec: FrameSpec }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setLoading(true);
+    setError(null);
+    try {
+      await downloadStepFile(spec);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors disabled:opacity-50"
+      >
+        {loading ? "Generating..." : "Download 3D model (STEP)"}
+      </button>
+      {error && (
+        <p className="text-xs text-warn">{error}</p>
+      )}
+      <p className="text-xs text-muted leading-snug">
+        Simplified: square bars without T-slots or brackets. For checking fit and layout.
+      </p>
     </div>
   );
 }

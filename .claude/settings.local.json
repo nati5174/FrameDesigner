@@ -27,7 +27,10 @@
       "Bash(done)",
       "Bash(pkill:*)",
       "Bash(npx tsc:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pip:*)",
+      "Read(//c/Users/netha/yc/frame_designer/frontend/**)",
+      "Bash(rm -rf /tmp/ocp_test)"
     ]
   }
 }
