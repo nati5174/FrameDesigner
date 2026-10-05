@@ -24,7 +24,8 @@
       "Bash(for f in frontend/components/panel/*.tsx)",
       "Bash(do echo \"=== $f ===\")",
       "Read(//c/Users/netha/yc/frame_designer/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(pkill:*)"
     ]
   }
 }

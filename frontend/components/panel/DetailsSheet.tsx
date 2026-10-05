@@ -116,6 +116,7 @@ export function DetailsSheet({
                       totalCostUsd={frameData.cut_list_total_cost_usd}
                       totalWeightKg={frameData.cut_list_total_weight_kg}
                       onRowHover={onCutListRowHover}
+                      spec={spec}
                     />
                   </CollapsibleSection>
 

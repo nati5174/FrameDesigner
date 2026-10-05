@@ -211,6 +211,7 @@ function PanelContent({
               totalCostUsd={frameData.cut_list_total_cost_usd}
               totalWeightKg={frameData.cut_list_total_weight_kg}
               onRowHover={onCutListRowHover}
+              spec={spec}
             />
           </CollapsibleSection>
 
@@ -224,6 +225,8 @@ function PanelContent({
               totalCostUsd={frameData.total_cost_usd ?? null}
               totalWeightKg={frameData.total_weight_kg ?? null}
               hardwarePriced={frameData.hardware_priced ?? false}
+              spec={spec}
+              cutListRows={frameData.cut_list}
             />
           </CollapsibleSection>
 

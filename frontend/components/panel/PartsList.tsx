@@ -1,4 +1,5 @@
-import type { PartsListRow } from "@/lib/types";
+import type { CutListRow, FrameSpec, PartsListRow } from "@/lib/types";
+import { downloadPartsListCsv } from "@/lib/csvExport";
 
 interface PartsListProps {
   rows: PartsListRow[];
@@ -9,6 +10,9 @@ interface PartsListProps {
   totalCostUsd: number | null;
   totalWeightKg: number | null;
   hardwarePriced: boolean;
+  /** When provided (with cutListRows), enables the "Download parts list (CSV)" button. */
+  spec?: FrameSpec | null;
+  cutListRows?: CutListRow[];
 }
 
 export function PartsList({
@@ -20,12 +24,27 @@ export function PartsList({
   totalCostUsd,
   totalWeightKg,
   hardwarePriced,
+  spec,
+  cutListRows,
 }: PartsListProps) {
   if (!hardwarePriced) {
     return (
-      <p className="text-xs text-muted leading-snug">
-        Hardware pricing not available for this profile series.
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-muted leading-snug">
+          Hardware pricing not available for this profile series.
+        </p>
+        {spec && cutListRows && (
+          <button
+            type="button"
+            onClick={() =>
+              downloadPartsListCsv(spec, cutListRows, [], barsCostUsd, null, null, false)
+            }
+            className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors"
+          >
+            Download parts list (CSV)
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -149,6 +168,26 @@ export function PartsList({
         , automated read, not confirmed by a person — except bolt 11-8318 price confirmed
         by a person 2026-10-05. Excludes shipping and tax.
       </p>
+
+      {spec && cutListRows && (
+        <button
+          type="button"
+          onClick={() =>
+            downloadPartsListCsv(
+              spec,
+              cutListRows,
+              rows,
+              barsCostUsd,
+              hardwareCostUsd,
+              totalCostUsd,
+              hardwarePriced,
+            )
+          }
+          className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors"
+        >
+          Download parts list (CSV)
+        </button>
+      )}
     </div>
   );
 }

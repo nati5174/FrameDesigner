@@ -12,7 +12,9 @@ Type a description of the frame you need and get a 3D model, cut list, load esti
 
 - **Text input** — describe the frame in plain language: `workbench 1500 × 700 mm, holds 100 kg, lower shelf`
 - **3D viewer** — interactive model you can rotate, with dimension labels
-- **Cut list** — every bar with its exact length, weight, and cost, grouped by profile; $3.00 cut charge per bar
+- **Cut list** — every bar with its exact length, weight, and cost, grouped by profile; $3.00 cut charge per bar. Example: 1500 × 700 × 900 mm workbench in 40-series: $362.69 bars and cuts + $60.72 hardware = **$423.41 total, 18.71 kg**. Switching to 45-series saves $22.04.
+- **Parts list** — full order in one place: bars, then one 2-hole inside corner bracket per rail end with 2 bolts and 2 T-nuts (as paired on the vendor's bracket page) — the minimum fasteners to assemble; joint strength is not checked. Prices are automated reads from 8020.net on the catalog date, except where marked confirmed. Excludes shipping and tax.
+- **CSV export** — "Download cut list (CSV)" and "Download parts list (CSV)" buttons in the details panel; files include a design summary header and the full order with subtotals
 - **Profile choice** — 20-, 30-, 40-, and 45-series aluminum extrusion (T-slot)
 - **Load estimate** — beam-bending and (for shelf units) leg-buckling checks; labelled as estimates with a stated safety factor
 - **Fix suggestions** — when a frame fails the load check, up to three verified alternatives (smaller span, reduced load, centre legs), each confirmed to pass before being shown; a cheaper-profile suggestion when the frame passes

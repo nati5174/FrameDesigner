@@ -1,4 +1,5 @@
-import type { CutListRow } from "@/lib/types";
+import type { CutListRow, FrameSpec } from "@/lib/types";
+import { downloadCutListCsv } from "@/lib/csvExport";
 
 interface CutListProps {
   rows: CutListRow[];
@@ -6,9 +7,11 @@ interface CutListProps {
   totalWeightKg?: number | null;
   /** Called with the hovered row's length, or null when the pointer leaves. */
   onRowHover?: (lengthMm: number | null) => void;
+  /** When provided, enables the "Download cut list (CSV)" button. */
+  spec?: FrameSpec | null;
 }
 
-export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover }: CutListProps) {
+export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover, spec }: CutListProps) {
   const grandTotal = rows.reduce((sum, r) => sum + r.total_mm, 0);
   const hasCost = totalCostUsd != null;
   const hasWeight = totalWeightKg != null;
@@ -87,6 +90,16 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover }: CutLi
           : "Cost not available — no price data for this profile series. Excludes brackets and fasteners, shipping and tax."
         }
       </p>
+
+      {spec && (
+        <button
+          type="button"
+          onClick={() => downloadCutListCsv(spec, rows, totalCostUsd ?? null)}
+          className="self-start text-xs text-muted underline decoration-dotted hover:text-text transition-colors"
+        >
+          Download cut list (CSV)
+        </button>
+      )}
     </div>
   );
 }
