@@ -18,7 +18,7 @@ Frame      -- bars + joints
 CheckReport
    |  outputs
    v
-cut list, bill of materials, 3D scene data
+cut list, cut plan, bill of materials, 3D scene data
    |  suggestions (deterministic — template text; no LLM)
    v
 FixCandidates  -- up to 3 verified passing specs + check reports + template text
@@ -49,6 +49,7 @@ The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `
 - **Frame**: list of bars, list of joints, the spec it came from.
 - **CheckReport**: pass/fail and details for collision, connectivity, and load; the load section carries the safety factor and an "estimate" label.
 - **CutList**: bars grouped by profile and length, with quantities. Each row carries `cost_usd` and `weight_kg` when catalog pricing is available; totals `total_cost_usd` and `total_weight_kg` are also returned.
+- **CutPlanResult**: per-profile bin-packing result. Each `ProfileCutPlan` contains `stock_bars` (each with ordered pieces, used_mm, offcut_mm), `does_not_fit`, `lower_bound_bars`, `is_optimal`, `waste_pct`. Inputs `stock_length_mm` (500–8000 mm) and `kerf_mm` (0–10 mm) are user-supplied. No cost data.
 - **BOM**: line items (part id, description, quantity, unit price, source) and a total. (Cut list done; BOM not started.)
 
 ## Modules
@@ -59,11 +60,11 @@ The LLM is called in two places only: `parser/llm.py` (text → FrameSpec) and `
 | `spec.py` | `TableSpec` / `ShelfUnitSpec` models and validation rules | nothing | done |
 | `generate/` | One generator per frame type; spec in, `Frame` out | spec, catalog | done (table + shelf unit) |
 | `checks/` | Collision, connectivity, load estimate, leg check, tipping | catalog | done |
-| `outputs/` | Cut list (with cost and weight); BOM not started | catalog | cut list done |
+| `outputs/` | Cut list (with cost and weight); cut plan (FFD + B&B); BOM not started | catalog | cut list + cut plan done |
 | `parser/` | Text to `FrameSpec`; rule-based + LLM dispatcher (`/parse`); edit parser (`/edit`) | spec | done |
 | `suggestions/` | `suggest_fixes` (structural, ≤3); `suggest_cheaper_profile` (standalone, cost saving) | spec, generate, checks | done |
 | `suggestions/rank.py` | Rank candidates and write one sentence per fix; only imported by `api.py` | suggestions, anthropic SDK | done |
-| `api.py` | `/frame`, `/parse`, `/suggest`, `/edit` endpoints | all of the above | done |
+| `api.py` | `/frame`, `/parse`, `/suggest`, `/edit`, `/cut-plan` endpoints | all of the above | done |
 | `evals/` | Parser eval (`run.py`), edit eval (`edit_suite.py`), suggestions eval (`suggestions_suite.py`) | parser, generate, checks | done |
 | `frontend/` | Next.js 16 App Router; chat thread, 3D viewer, spec/cut list/suggestions panel, mobile sheets | api | done (stages 1–9) |
 
@@ -318,6 +319,8 @@ Results committed to `evals/results/`. `prompts_test.json` is user-written and n
 
 After `/edit` returns a spec, the frontend calls `POST /frame` to get bars, cut list, and check report.
 
+**`POST /cut-plan`** accepts `{spec, stock_length_mm, kerf_mm}` and returns a stock-bar cut plan (FFD + branch-and-bound). No LLM. Rate-limited 120/minute. Inputs `stock_length_mm` (500–8000) and `kerf_mm` (0–10) are user-supplied and never stored in the catalog.
+
 ## Chat frontend (stages 1–9)
 
 The frontend is a persistent conversation. Each turn appends to a thread; the 3D viewer and details panel stay live.
@@ -363,4 +366,5 @@ The frontend is a persistent conversation. Each turn appends to a thread; the 3D
     c. Desktop 3-column layout + form sync ✓
     d. localStorage persistence (stage 8) ✓
     e. Mobile sheets — ThreadSheet + DetailsSheet (stage 9) ✓
-13. Release work (hosting, real catalogs, CAD export)
+13. Cut plan (`/cut-plan`, `outputs/cut_plan.py`, frontend "Cut plan" section) ✓
+14. Release work (hosting, real catalogs, CAD export)

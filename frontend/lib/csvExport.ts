@@ -1,7 +1,7 @@
 // CSV export helpers — build and download cut list and parts list CSV files.
 // All values are copied from the API response; no domain numbers are recomputed here.
 
-import type { CutListRow, FrameSpec, PartsListRow } from "@/lib/types";
+import type { CutListRow, CutPlanResponse, FrameSpec, PartsListRow } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -167,6 +167,67 @@ export function buildPartsListCsv(
     content: lines.join("\n"),
     filename: `frame-parts-list-${spec.width_mm}x${spec.depth_mm}x${spec.height_mm}.csv`,
   };
+}
+
+// ─── Cut plan CSV ─────────────────────────────────────────────────────────────
+// Columns: stock_bar, piece_index, length_mm, label
+// One section per profile; summary row per profile; footer note.
+
+export function buildCutPlanCsv(
+  spec: FrameSpec,
+  plan: CutPlanResponse,
+  catalogVersion = "v4",
+  today = new Date().toISOString().slice(0, 10),
+): { content: string; filename: string } {
+  const lines: string[] = [
+    ...commentHeaders(spec, catalogVersion, today),
+    `# Cut plan: stock ${plan.stock_length_mm} mm, kerf ${plan.kerf_mm} mm`,
+    `# Each piece uses its length plus one kerf (saw blade width).`,
+    "",
+  ];
+
+  for (const profile of plan.profiles) {
+    lines.push(csvRow(`Profile: ${profile.profile_id}`));
+    lines.push(csvRow("stock_bar", "piece_index", "length_mm", "label"));
+    for (let i = 0; i < profile.stock_bars.length; i++) {
+      const bar = profile.stock_bars[i];
+      for (let j = 0; j < bar.pieces.length; j++) {
+        const p = bar.pieces[j];
+        lines.push(csvRow(i + 1, j + 1, p.length_mm, p.label));
+      }
+      lines.push(csvRow(i + 1, "offcut", bar.offcut_mm, "offcut"));
+    }
+    if (profile.does_not_fit.length > 0) {
+      lines.push(csvRow("", "DOES NOT FIT (piece longer than stock)", "", ""));
+      for (const p of profile.does_not_fit) {
+        lines.push(csvRow("", "", p.length_mm, p.label));
+      }
+    }
+    const optimality = profile.is_optimal ? "fewest bars possible" : "may not be the minimum";
+    lines.push(
+      csvRow(
+        "",
+        `${profile.total_stock_bars} stock bars to buy`,
+        `${profile.waste_pct.toFixed(1)}% waste`,
+        optimality,
+      ),
+    );
+    lines.push("");
+  }
+
+  return {
+    content: lines.join("\n"),
+    filename: `frame-cut-plan-${spec.width_mm}x${spec.depth_mm}x${spec.height_mm}.csv`,
+  };
+}
+
+export function downloadCutPlanCsv(
+  spec: FrameSpec,
+  plan: CutPlanResponse,
+  catalogVersion = "v4",
+): void {
+  const { content, filename } = buildCutPlanCsv(spec, plan, catalogVersion);
+  triggerDownload(filename, content);
 }
 
 export function downloadPartsListCsv(

@@ -201,6 +201,36 @@ export interface PartsListRow {
   source_url: string;
 }
 
+// /cut-plan ───────────────────────────────────────────────────────────────────
+
+export interface CutPlanPiece {
+  length_mm: number;
+  label: string;
+}
+
+export interface StockBarPlan {
+  pieces: CutPlanPiece[];
+  used_mm: number;
+  offcut_mm: number;
+}
+
+export interface ProfileCutPlan {
+  profile_id: string;
+  stock_bars: StockBarPlan[];
+  does_not_fit: CutPlanPiece[];
+  total_stock_bars: number;
+  total_offcut_mm: number;
+  waste_pct: number;
+  lower_bound_bars: number;
+  is_optimal: boolean;
+}
+
+export interface CutPlanResponse {
+  profiles: ProfileCutPlan[];
+  stock_length_mm: number;
+  kerf_mm: number;
+}
+
 export interface FrameResponse {
   bars: BarData[];
   cut_list: CutListRow[];

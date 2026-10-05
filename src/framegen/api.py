@@ -28,6 +28,13 @@ from framegen.checks import run_checks
 from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
+from framegen.outputs.cut_plan import (
+    CutPlanPiece,
+    CutPlanResult,
+    ProfileCutPlan,
+    StockBarPlan,
+    plan_cuts,
+)
 from framegen.outputs.parts_list import build_parts_list
 from framegen.parser import parse as parser_parse
 from framegen.spec import ShelfUnitSpec, TableSpec
@@ -650,6 +657,100 @@ def post_edit(request: Request, req: EditRequest) -> EditResponse:
         llm_available=llm_available,
         error=error,
     )
+
+
+# ── /cut-plan ─────────────────────────────────────────────────────────────────
+
+class CutPlanRequest(BaseModel):
+    spec: SpecOut
+    stock_length_mm: float = Field(default=3000.0, ge=500.0, le=8000.0)
+    kerf_mm: float = Field(default=3.0, ge=0.0, le=10.0)
+
+
+def _serialise_cut_plan(result: CutPlanResult) -> dict[str, Any]:
+    def _piece(p: CutPlanPiece) -> dict[str, Any]:
+        return {"length_mm": p.length_mm, "label": p.label}
+
+    def _bar(b: StockBarPlan) -> dict[str, Any]:
+        return {
+            "pieces": [_piece(p) for p in b.pieces],
+            "used_mm": b.used_mm,
+            "offcut_mm": b.offcut_mm,
+        }
+
+    def _profile(pr: ProfileCutPlan) -> dict[str, Any]:
+        return {
+            "profile_id": pr.profile_id,
+            "stock_bars": [_bar(b) for b in pr.stock_bars],
+            "does_not_fit": [_piece(p) for p in pr.does_not_fit],
+            "total_stock_bars": pr.total_stock_bars,
+            "total_offcut_mm": pr.total_offcut_mm,
+            "waste_pct": pr.waste_pct,
+            "lower_bound_bars": pr.lower_bound_bars,
+            "is_optimal": pr.is_optimal,
+        }
+
+    return {
+        "profiles": [_profile(pr) for pr in result.profiles],
+        "stock_length_mm": result.stock_length_mm,
+        "kerf_mm": result.kerf_mm,
+    }
+
+
+@app.post("/cut-plan")
+@limiter.limit("120/minute")
+def post_cut_plan(request: Request, req: CutPlanRequest) -> dict[str, Any]:
+    s = req.spec
+    series = s.profile_series
+    if series not in _CATALOG.profiles:
+        raise HTTPException(status_code=400, detail=f"unknown series: {series!r}")
+    profile = _CATALOG.profiles[series]
+
+    try:
+        if s.frame_type == "shelf_unit":
+            spec: TableSpec | ShelfUnitSpec = ShelfUnitSpec.model_validate(
+                dict(
+                    frame_type="shelf_unit",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    level_heights_mm=s.level_heights_mm or [],
+                    load_per_level_kg=s.load_per_level_kg or 30.0,
+                    centre_legs=s.centre_legs,
+                )
+            )
+        else:
+            spec = TableSpec.model_validate(
+                dict(
+                    frame_type="table",
+                    width_mm=s.width_mm,
+                    depth_mm=s.depth_mm,
+                    height_mm=s.height_mm,
+                    profile_series=series,
+                    target_load_kg=s.target_load_kg or 100.0,
+                    shelf_height_mm=s.shelf_height_mm,
+                    centre_legs=s.centre_legs,
+                )
+            )
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        if isinstance(spec, ShelfUnitSpec):
+            bars = generate_shelf_unit(spec, profile)
+        else:
+            bars = generate_table(spec, profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        result = plan_cuts(bars, req.stock_length_mm, req.kerf_mm)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    request.state.frame_type = spec.frame_type
+    return _serialise_cut_plan(result)
 
 
 def _serialise_candidate(c: FixCandidate) -> dict[str, Any]:

@@ -5,6 +5,7 @@ import type { FixCandidate, FrameResponse, FrameSpec } from "@/lib/types";
 import { CollapsibleSection } from "@/components/panel/CollapsibleSection";
 import { DimensionsForm } from "@/components/panel/DimensionsForm";
 import { CutList } from "@/components/panel/CutList";
+import { CutPlan } from "@/components/panel/CutPlan";
 import { LoadCheck } from "@/components/panel/LoadCheck";
 import { PartsList } from "@/components/panel/PartsList";
 import { Suggestions } from "@/components/panel/Suggestions";
@@ -229,6 +230,12 @@ function PanelContent({
               cutListRows={frameData.cut_list}
             />
           </CollapsibleSection>
+
+          {spec && (
+            <CollapsibleSection title="Cut plan" defaultOpen={false}>
+              <CutPlan spec={spec} />
+            </CollapsibleSection>
+          )}
 
           {frameData.cost_suggestion && (
             <CollapsibleSection title="Cost saving">
