@@ -1,0 +1,58 @@
+{
+  "timestamp": "20261005T173130Z",
+  "git_hash": "b9e1fd2",
+  "prompt_file": "prompts_edit_regression.json",
+  "configs": [
+    {
+      "config": "rule_based",
+      "status": "ok",
+      "overall": "14/14",
+      "by_group": {
+        "add": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "set": "2/2",
+        "shelf": "1/1",
+        "shelf_height_level_consistency": "4/4",
+        "shelf_unit_levels": "1/1",
+        "unsupported": "1/1"
+      },
+      "failures": []
+    },
+    {
+      "config": "llm",
+      "status": "ok",
+      "overall": "14/14",
+      "by_group": {
+        "add": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "set": "2/2",
+        "shelf": "1/1",
+        "shelf_height_level_consistency": "4/4",
+        "shelf_unit_levels": "1/1",
+        "unsupported": "1/1"
+      },
+      "failures": []
+    },
+    {
+      "config": "dispatcher",
+      "status": "ok",
+      "overall": "14/14",
+      "by_group": {
+        "add": "2/2",
+        "keep_other_fields": "1/1",
+        "load_question": "1/1",
+        "new_design_signal": "1/1",
+        "set": "2/2",
+        "shelf": "1/1",
+        "shelf_height_level_consistency": "4/4",
+        "shelf_unit_levels": "1/1",
+        "unsupported": "1/1"
+      },
+      "failures": []
+    }
+  ]
+}

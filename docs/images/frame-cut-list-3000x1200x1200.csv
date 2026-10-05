@@ -1,0 +1,13 @@
+# Frame Designer
+# Design: table, 3000 x 1200 x 1200 mm, load 100 kg, 40-series
+# Date: 2026-10-05
+# Catalog: v4 (prices read 2026-10-04)
+# Hardware: One 2-hole inside corner bracket per rail end, 2 bolts and 2 T-nuts; minimum to assemble. Joint strength not checked.
+# Load results are estimates, not certified engineering. Prices read from the vendor site on the catalog date; check before ordering.
+
+profile_id,length_mm,qty,unit_cost_usd,line_cost_usd
+45-4545,1110,2,47.62,95.24
+45-4545,1200,6,51.24,307.44
+45-4545,1432.5,4,60.59,242.35
+
+,Total (bars + cuts),,,645.03

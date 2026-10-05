@@ -53,9 +53,9 @@ function makeGovRail(): RailCheck {
 }
 
 describe("LoadCheck", () => {
-  it("renders the StatusBadge", () => {
+  it("renders without crashing", () => {
     render(<LoadCheck checkReport={makePassingReport()} />);
-    expect(screen.getByRole("generic", { name: /Load check:/i })).toBeInTheDocument();
+    expect(screen.getByText(/estimates with a/i)).toBeInTheDocument();
   });
 
   it("shows the estimate disclaimer", () => {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import NamedTuple
 
@@ -7,6 +8,8 @@ from pydantic import ValidationError
 
 from framegen.parser import _TABLE_WORD_RE, ParseResult
 from framegen.spec import MIN_LEVEL_HEIGHT_MM, ShelfUnitSpec, TableSpec
+
+_log = logging.getLogger(__name__)
 
 # ── Regex helpers ─────────────────────────────────────────────────────────────
 
@@ -408,11 +411,14 @@ def _try_parse_shelf_unit(
             )
         )
     except ValidationError as exc:
-        msgs = "; ".join(e["msg"] for e in exc.errors())
+        _log.warning("spec_invalid shelf_unit: %s", exc)
         return ParseResult(
             outcome="spec_invalid",
             spec=None,
-            error=msgs,
+            error=(
+                "I could not build a frame from that description. "
+                "Please check the dimensions and try again."
+            ),
             parser_used="rule_based",
         )
 
@@ -584,11 +590,14 @@ def parse(text: str) -> ParseResult:  # noqa: C901
             )
         )
     except ValidationError as exc:
-        msgs = "; ".join(e["msg"] for e in exc.errors())
+        _log.warning("spec_invalid table: %s", exc)
         return ParseResult(
             outcome="spec_invalid",
             spec=None,
-            error=msgs,
+            error=(
+                "I could not build a frame from that description. "
+                "Please check the dimensions and try again."
+            ),
             parser_used="rule_based",
         )
 

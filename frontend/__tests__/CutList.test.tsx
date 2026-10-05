@@ -18,7 +18,7 @@ describe("CutList", () => {
   it("shows the grand total", () => {
     render(<CutList rows={ROWS} />);
     // 3600 + 2840 + 1240 = 7680
-    expect(screen.getByText(/7,680/)).toBeInTheDocument();
+    expect(screen.getByText(/7680/)).toBeInTheDocument();
   });
 
   it("renders qty with × prefix", () => {

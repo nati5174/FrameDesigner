@@ -1,5 +1,5 @@
 import type { CheckReport, LegCheck, RailCheck } from "@/lib/types";
-import { StatusBadge } from "@/components/StatusBadge";
+import { formatRole } from "@/lib/labels";
 
 interface LoadCheckProps {
   checkReport: CheckReport;
@@ -23,14 +23,14 @@ function RailCard({ rail, governing }: { rail: RailCheck; governing: boolean }) 
     <div
       className={`rounded border p-3 text-xs font-mono space-y-1 ${
         governing
-          ? "border-accent bg-accent/5"
+          ? "border-rule bg-surface"
           : "border-border bg-bg"
       }`}
     >
       <p className="text-muted mb-1">
         {governing ? "★ Governing rail" : "Rail"}
         {" "}
-        <span className="text-text">{rail.role}</span>
+        <span className="text-text">{formatRole(rail.role)}</span>
       </p>
       <Row label="Span" value={`${rail.span_mm.toLocaleString()} mm`} />
       <Row
@@ -97,8 +97,6 @@ export function LoadCheck({ checkReport }: LoadCheckProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <StatusBadge checkReport={checkReport} />
-
       {load.status === "not_evaluated" && load.not_evaluated_reason && (
         <p className="text-xs text-muted">{load.not_evaluated_reason}</p>
       )}

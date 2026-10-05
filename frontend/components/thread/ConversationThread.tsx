@@ -19,26 +19,36 @@ export function ConversationThread({ entries, onRestoreSpec, onChip }: Props) {
 
   if (entries.length === 0) return null;
 
+  // Find the index of the last assistant entry for isLatest
+  const lastAssistantIdx = entries.reduce(
+    (last, e, i) => (e.role === "assistant" ? i : last),
+    -1,
+  );
+
   return (
     <div className="flex flex-col gap-3 overflow-y-auto px-3 py-3">
       {entries.map((entry, i) => {
         if (entry.role === "user") {
           return (
             <div key={i} className="flex justify-end">
-              <div className="max-w-[80%] rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm">
+              <div className="max-w-[80%] bg-ink text-surface px-3 py-2 text-sm">
                 {entry.text}
               </div>
             </div>
           );
         }
+        const isLatest = i === lastAssistantIdx;
+        // Restore only makes sense on non-latest cards (go back to an earlier design)
+        const canRestore = !isLatest && entry.spec != null;
         return (
           <div key={i} className="flex justify-start">
-            <div className="w-full max-w-[90%]">
+            <div className="w-full">
               <AssistantCard
                 card={entry.card}
                 spec={entry.spec}
-                onRestore={onRestoreSpec}
-                onChip={onChip}
+                onRestore={canRestore ? onRestoreSpec : undefined}
+                onChip={isLatest ? onChip : undefined}
+                isLatest={isLatest}
               />
             </div>
           </div>

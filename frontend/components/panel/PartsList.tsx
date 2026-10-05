@@ -1,5 +1,6 @@
 import type { CutListRow, FrameSpec, PartsListRow } from "@/lib/types";
 import { downloadPartsListCsv } from "@/lib/csvExport";
+import { usd } from "@/lib/labels";
 
 interface PartsListProps {
   rows: PartsListRow[];
@@ -73,7 +74,7 @@ export function PartsList({
                     href={row.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline decoration-dotted hover:text-accent transition-colors"
+                    className="underline decoration-dotted hover:text-text transition-colors"
                   >
                     {row.part_number}
                   </a>
@@ -85,10 +86,10 @@ export function PartsList({
                   {row.qty}
                 </td>
                 <td className="py-1 pr-2 text-right text-muted">
-                  ${row.unit_price_usd.toFixed(2)}
+                  ${usd(row.unit_price_usd)}
                 </td>
                 <td className="py-1 text-right text-text">
-                  ${row.line_total_usd.toFixed(2)}
+                  ${usd(row.line_total_usd)}
                 </td>
               </tr>
             ))}
@@ -100,7 +101,7 @@ export function PartsList({
               </td>
               <td className="pt-2 text-right text-sm font-medium text-text">
                 {hardwareCostUsd != null
-                  ? `$${hardwareCostUsd.toFixed(2)}`
+                  ? `$${usd(hardwareCostUsd)}`
                   : <span className="text-muted text-xs font-normal">n/a</span>
                 }
               </td>
@@ -124,20 +125,20 @@ export function PartsList({
         <div className="border-t border-border pt-2 text-xs font-mono">
           <div className="flex justify-between text-muted">
             <span>Bars + cuts</span>
-            <span>${barsCostUsd.toFixed(2)}</span>
+            <span>${usd(barsCostUsd)}</span>
           </div>
           <div className="flex justify-between text-muted">
             <span>Hardware</span>
             <span>
               {hardwareCostUsd != null
-                ? `$${hardwareCostUsd.toFixed(2)}`
+                ? `$${usd(hardwareCostUsd)}`
                 : "n/a"}
             </span>
           </div>
           {totalCostUsd != null && (
             <div className="flex justify-between font-semibold text-text mt-1 border-t border-border pt-1">
               <span>Total</span>
-              <span>${totalCostUsd.toFixed(2)}</span>
+              <span>${usd(totalCostUsd)}</span>
             </div>
           )}
           {totalWeightKg != null && (

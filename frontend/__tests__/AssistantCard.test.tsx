@@ -51,7 +51,7 @@ describe("AssistantCard new_design", () => {
     expect(screen.queryByText(/height_mm=900/)).not.toBeInTheDocument();
   });
 
-  it("shows dimension summary for new_design (Bug 6)", () => {
+  it("shows dimension summary for non-latest new_design card (Bug 6)", () => {
     const card: AssistantCardType = {
       type: "new_design",
       spec: SPEC,
@@ -59,10 +59,9 @@ describe("AssistantCard new_design", () => {
       defaults: [],
       frameData: null,
     };
-    render(<AssistantCard card={card} spec={SPEC} />);
-    const summary = screen.getByTestId("spec-summary");
-    expect(summary).toHaveTextContent("1500 × 700 × 900 mm");
-    expect(summary).toHaveTextContent("40-series");
+    // Non-latest cards render a compact one-liner with the dimensions
+    render(<AssistantCard card={card} spec={SPEC} isLatest={false} />);
+    expect(screen.getByText("1500 × 700 × 900 mm")).toBeInTheDocument();
   });
 
   it("calls onRestore when Restore is clicked", () => {

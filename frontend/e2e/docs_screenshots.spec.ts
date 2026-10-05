@@ -60,9 +60,10 @@ test("docs: failing frame with suggestions", async ({ browser }) => {
   await submit(page, "bench 3000 x 700 x 900 mm, holds 100 kg");
   await waitForResult(page);
 
-  // Make sure the Suggestions section is in view (it's open by default)
-  const suggestions = page.locator("section").filter({ hasText: "Suggestions" }).first();
-  await suggestions.scrollIntoViewIfNeeded();
+  // In the redesigned UI, suggestions appear as chips in the AssistantCard.
+  // Just wait for the canvas and take the screenshot.
+  await page.locator("canvas").waitFor({ timeout: 15_000 });
+  await page.waitForTimeout(500);
 
   await page.screenshot({ path: path.join(OUT, "fail.png") });
   await context.close();

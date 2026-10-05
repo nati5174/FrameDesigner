@@ -139,7 +139,7 @@ export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProp
             onClick={() => set("frame_type", ft)}
             className={`flex-1 py-1.5 font-medium transition-colors ${
               draft.frame_type === ft
-                ? "bg-accent text-accent-fg"
+                ? "bg-ink text-surface"
                 : "text-muted hover:text-text"
             }`}
           >
@@ -248,8 +248,8 @@ export function DimensionsForm({ spec, loading, onGenerate }: DimensionsFormProp
         disabled={loading || !valid}
         className="
           flex items-center justify-center gap-2 rounded-md
-          bg-accent px-4 py-2 text-sm font-medium text-accent-fg
-          hover:bg-accent-hover disabled:opacity-50 transition-colors
+          bg-ink px-4 py-2 text-sm font-medium text-surface
+          hover:opacity-90 disabled:opacity-50 transition-colors
         "
       >
         {loading && <Spinner size="sm" />}

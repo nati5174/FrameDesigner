@@ -2,38 +2,45 @@
 
 /* ── Design tokens — light ───────────────────────────────────────────────── */
 :root {
-  --bg:      #F4F1EC;
+  --paper:   #EEF1F3;
+  --grid:    #D7DEE4;
   --surface: #FFFFFF;
-  --border:  #DDD9D3;
-  --text:    #1C1A17;
-  --muted:   #6B6560;
+  --ink:     #16202A;
+  --muted:   #52606D;
 
-  /* Accent: white text on --accent is 5.56 : 1 (WCAG AA). */
-  --accent:       #2D62B4;
-  --accent-hover: #245298;
+  /* rule = border/divider lines */
+  --rule: #C9D1D8;
+
+  /* Accent: white text on --accent is 4.84 : 1 (WCAG AA). */
+  --accent:       #C2410C;
+  --accent-hover: #A4360A;
   --accent-fg:    #FFFFFF;
 
   /* States — all ≥ 4.5 : 1 on white. */
   --pass: #1E7A45;   /* 5.02 : 1 */
-  --warn: #8B5E0A;   /* 5.25 : 1 — darkened from #B07818 (was 3.62 : 1) */
+  --warn: #8A4B00;   /* 7.30 : 1 */
+  --warn-bg: #FFF1DC;
   --fail: #B83A25;   /* 5.62 : 1 */
   --dim:  #5A84C8;
 }
 
 /* ── Dark token values (shared by media query and data-theme) ────────────── */
 .dark-tokens {
-  --bg:      #1A1A1E;
+  --paper:   #1A1A1E;
+  --grid:    #2A2A30;
   --surface: #242428;
-  --border:  #32323A;
-  --text:    #E6E3DD;
+  --ink:     #E6E3DD;
   --muted:   #8A8880;
 
-  --accent:       #2D62B4;
-  --accent-hover: #3A72C4;
+  --rule: #32323A;
+
+  --accent:       #C2410C;
+  --accent-hover: #D95015;
   --accent-fg:    #FFFFFF;
 
   --pass: #2A9E5A;
   --warn: #C9921E;
+  --warn-bg: #3A2800;
   --fail: #D44830;
   --dim:  #6A9EC4;
 }
@@ -41,18 +48,21 @@
 /* ── Dark overrides — system preference (only when no explicit override) ─── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg:      #1A1A1E;
+    --paper:   #1A1A1E;
+    --grid:    #2A2A30;
     --surface: #242428;
-    --border:  #32323A;
-    --text:    #E6E3DD;
+    --ink:     #E6E3DD;
     --muted:   #8A8880;
 
-    --accent:       #2D62B4;
-    --accent-hover: #3A72C4;
+    --rule: #32323A;
+
+    --accent:       #C2410C;
+    --accent-hover: #D95015;
     --accent-fg:    #FFFFFF;
 
     --pass: #2A9E5A;
     --warn: #C9921E;
+    --warn-bg: #3A2800;
     --fail: #D44830;
     --dim:  #6A9EC4;
   }
@@ -60,62 +70,76 @@
 
 /* ── Explicit dark override ──────────────────────────────────────────────── */
 html[data-theme="dark"] {
-  --bg:      #1A1A1E;
+  --paper:   #1A1A1E;
+  --grid:    #2A2A30;
   --surface: #242428;
-  --border:  #32323A;
-  --text:    #E6E3DD;
+  --ink:     #E6E3DD;
   --muted:   #8A8880;
 
-  --accent:       #2D62B4;
-  --accent-hover: #3A72C4;
+  --rule: #32323A;
+
+  --accent:       #C2410C;
+  --accent-hover: #D95015;
   --accent-fg:    #FFFFFF;
 
   --pass: #2A9E5A;
   --warn: #C9921E;
+  --warn-bg: #3A2800;
   --fail: #D44830;
   --dim:  #6A9EC4;
 }
 
 /* ── Explicit light override (beats system dark) ─────────────────────────── */
 html[data-theme="light"] {
-  --bg:      #F4F1EC;
+  --paper:   #EEF1F3;
+  --grid:    #D7DEE4;
   --surface: #FFFFFF;
-  --border:  #DDD9D3;
-  --text:    #1C1A17;
-  --muted:   #6B6560;
+  --ink:     #16202A;
+  --muted:   #52606D;
 
-  --accent:       #2D62B4;
-  --accent-hover: #245298;
+  --rule: #C9D1D8;
+
+  --accent:       #C2410C;
+  --accent-hover: #A4360A;
   --accent-fg:    #FFFFFF;
 
   --pass: #1E7A45;
-  --warn: #8B5E0A;
+  --warn: #8A4B00;
+  --warn-bg: #FFF1DC;
   --fail: #B83A25;
   --dim:  #5A84C8;
 }
 
 /* ── Tailwind token map ──────────────────────────────────────────────────── */
 @theme inline {
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains);
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
 
-  --color-bg:           var(--bg);
+  /* --color-bg maps to bg-bg utility; points to --paper so no component changes needed */
+  --color-bg:           var(--paper);
+  --color-paper:        var(--paper);
+  --color-grid:         var(--grid);
   --color-surface:      var(--surface);
-  --color-border:       var(--border);
-  --color-text:         var(--text);
+  /* --color-text maps to text-text utility; points to --ink */
+  --color-text:         var(--ink);
+  --color-ink:          var(--ink);
   --color-muted:        var(--muted);
+  /* --color-border maps to border-border utility; points to --rule */
+  --color-border:       var(--rule);
+  --color-rule:         var(--rule);
   --color-accent:       var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-fg:    var(--accent-fg);
   --color-pass:         var(--pass);
   --color-warn:         var(--warn);
+  --color-warn-bg:      var(--warn-bg);
   --color-fail:         var(--fail);
   --color-dim:          var(--dim);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
 html, body { height: 100%; }
-body { background-color: var(--bg); color: var(--text); }
+body { background-color: var(--paper); color: var(--ink); }
 
 /* Keyboard focus ring */
 :focus-visible {
@@ -127,9 +151,9 @@ body { background-color: var(--bg); color: var(--text); }
 /* Scrollbar — thin, themed track so it blends with the panel borders in dark mode */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 ::-webkit-scrollbar        { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb  { background: var(--rule); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }

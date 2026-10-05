@@ -1,0 +1,46 @@
+{
+  "timestamp": "20261005T173110Z",
+  "git_hash": "b9e1fd2",
+  "prompt_file": "prompts_regression.json",
+  "prompt_file_version": 1,
+  "configs": [
+    {
+      "config": "rule_based",
+      "status": "ok",
+      "overall": "20/21",
+      "by_group": {
+        "A": "3/3",
+        "B": "1/1",
+        "C": "2/2",
+        "D": "2/2",
+        "E": "2/2",
+        "F": "5/5",
+        "G": "3/3",
+        "H": "2/3"
+      },
+      "by_field": {
+        "W": "16/16",
+        "D": "16/16",
+        "H": "16/16",
+        "S": "16/16",
+        "L": "16/16"
+      },
+      "failures": [
+        {
+          "id": "T19",
+          "text": "1500mm x 700mm x 900mm table, 6mm thick top",
+          "expected": {
+            "outcome": "spec_valid",
+            "W": 1500,
+            "D": 700,
+            "H": 900
+          },
+          "got_outcome": "not_parsed",
+          "got_error": null,
+          "got_spec": null,
+          "field_results": {}
+        }
+      ]
+    }
+  ]
+}

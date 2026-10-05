@@ -365,7 +365,11 @@ def get_frame(
             )
         )
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _log.error("validation_error in get_frame: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="I could not apply that change. The frame is unchanged.",
+        ) from exc
 
     result = _run_frame(spec, series)
     request.state.frame_type = spec.frame_type
@@ -412,7 +416,11 @@ def post_frame(request: Request, req: PostFrameRequest) -> dict[str, Any]:
                 )
             )
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _log.error("validation_error in post_frame: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="I could not apply that change. The frame is unchanged.",
+        ) from exc
 
     result = _run_frame(spec, series)
     request.state.frame_type = spec.frame_type
@@ -465,7 +473,11 @@ def post_suggest(request: Request, req: SuggestRequest) -> dict[str, Any]:
                 )
             )
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _log.error("validation_error in post_suggest: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="I could not apply that change. The frame is unchanged.",
+        ) from exc
 
     try:
         if isinstance(spec, ShelfUnitSpec):
@@ -610,7 +622,11 @@ def post_edit(request: Request, req: EditRequest) -> EditResponse:
         try:
             spec_in = _spec_out_to_internal(req.spec)
         except ValidationError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            _log.error("validation_error in post_edit spec_in: %s", exc)
+            raise HTTPException(
+                status_code=400,
+                detail="I could not apply that change. The frame is unchanged.",
+            ) from exc
 
     pending_in = None
     if req.pending is not None:
@@ -734,7 +750,11 @@ def post_cut_plan(request: Request, req: CutPlanRequest) -> dict[str, Any]:
                 )
             )
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _log.error("validation_error in post_cut_plan: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="I could not apply that change. The frame is unchanged.",
+        ) from exc
 
     try:
         if isinstance(spec, ShelfUnitSpec):

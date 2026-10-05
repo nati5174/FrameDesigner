@@ -30,7 +30,7 @@ const CONFIG: Record<Status, { label: string; icon: string; classes: string }> =
   warn: {
     label: "Pass with warning",
     icon: "⚠",
-    classes: "bg-warn/10 text-warn border-warn/30",
+    classes: "bg-warn-bg text-warn border-warn/30",
   },
   fail: {
     label: "Fail",
@@ -45,7 +45,7 @@ export function StatusBadge({ checkReport }: StatusBadgeProps) {
   return (
     <span
       aria-label={`Load check: ${label}`}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium ${classes}`}
+      className={`inline-flex items-center gap-1.5 rounded border px-3 py-1 text-sm font-medium ${classes}`}
     >
       <span aria-hidden="true">{icon}</span>
       {label}

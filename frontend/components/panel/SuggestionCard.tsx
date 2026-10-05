@@ -38,9 +38,9 @@ export function SuggestionCard({
           type="button"
           onClick={() => onApply(candidate)}
           className="
-            flex-1 rounded border border-accent px-3 py-1
-            text-xs font-medium text-accent
-            hover:bg-accent hover:text-accent-fg
+            flex-1 border border-border px-3 py-1
+            text-xs font-medium text-text
+            hover:bg-grid
             transition-colors
           "
         >

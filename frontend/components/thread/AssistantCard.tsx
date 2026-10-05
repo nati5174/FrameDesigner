@@ -9,12 +9,15 @@ import type {
 } from "@/lib/types";
 import { Spinner } from "@/components/ui/Spinner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatFrameType } from "@/lib/labels";
 
 interface Props {
   card: AssistantCardType;
   spec: FrameSpec | null;
   onRestore?: (spec: FrameSpec) => void;
   onChip?: (text: string) => void;
+  /** True for the most recent assistant entry. Earlier cards render compact. */
+  isLatest?: boolean;
 }
 
 // ── Next-step chip generation ─────────────────────────────────────────────────
@@ -70,14 +73,19 @@ function fieldUnit(key: string): string {
   return "";
 }
 
+function formatValue(field: string, val: unknown): string {
+  if (field === "frame_type" && typeof val === "string") return formatFrameType(val);
+  return String(val);
+}
+
 function formatChange(c: FieldChange): string {
   const label = fieldLabel(c.field);
   const cap = label.charAt(0).toUpperCase() + label.slice(1);
   const unit = fieldUnit(c.field);
   if (c.old != null && c.new != null) {
-    return `${cap} ${c.old}${unit} → ${c.new}${unit}`;
+    return `${cap} ${formatValue(c.field, c.old)}${unit} → ${formatValue(c.field, c.new)}${unit}`;
   }
-  return `${cap} → ${c.new}${unit}`;
+  return `${cap} → ${formatValue(c.field, c.new)}${unit}`;
 }
 
 /**
@@ -104,7 +112,37 @@ function specSummary(spec: FrameSpec): string {
   return parts.join(" · ");
 }
 
-export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
+export function AssistantCard({ card, spec, onRestore, onChip, isLatest = true }: Props) {
+  // ── Collapsed one-liner for earlier (non-latest) cards ─────────────────────
+  if (!isLatest && (card.type === "new_design" || card.type === "edit" || card.type === "example")) {
+    const frameData = card.type === "example" ? card.frameData : card.frameData;
+    const checkReport = frameData?.check_report;
+    const status = checkReport
+      ? checkReport.passed ? (checkReport.load.governing_rail && !checkReport.load.governing_rail.concentrated.passed ? "⚠" : "✓") : "✕"
+      : null;
+    const dimSpec = card.type === "example" ? card.spec : card.spec;
+    const dimSummary = dimSpec
+      ? `${dimSpec.width_mm} × ${dimSpec.depth_mm} × ${dimSpec.height_mm} mm`
+      : "";
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border border-border bg-surface text-xs font-mono text-muted">
+        <span>
+          {status && <span className="mr-1">{status}</span>}
+          {dimSummary}
+        </span>
+        {onRestore && spec && (
+          <button
+            type="button"
+            onClick={() => onRestore(spec)}
+            className="shrink-0 text-xs text-muted hover:text-text transition-colors"
+          >
+            Restore
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (card.type === "example") {
     return (
       <div className="rounded-lg border border-border bg-surface text-sm overflow-hidden">
@@ -126,7 +164,7 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
                 type="button"
                 data-testid="next-step-chip"
                 onClick={() => onChip(chip)}
-                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:bg-accent hover:text-accent-fg transition-colors"
+                className="border border-border bg-surface px-2.5 py-1 text-xs text-muted hover:border-ink hover:text-text transition-colors"
               >
                 {chip}
               </button>
@@ -149,8 +187,8 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
   if (card.type === "new_design" || card.type === "edit") {
     const badgeClass =
       card.type === "new_design"
-        ? "bg-accent text-accent-fg"
-        : "bg-emerald-600 text-white dark:bg-emerald-500";
+        ? "bg-ink text-surface"
+        : "border border-border text-muted";
     const label = card.type === "new_design" ? "New design" : "Updated";
 
     return (
@@ -172,14 +210,15 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
             <button
               type="button"
               onClick={() => onRestore(spec)}
-              className="ml-auto text-xs text-accent hover:underline"
+              className="ml-auto text-xs text-muted hover:text-text"
             >
               Restore
             </button>
           )}
         </div>
 
-        {card.type === "new_design" && (
+        {/* specSummary hidden on latest — dimensions live in the viewer caption strip */}
+        {card.type === "new_design" && !isLatest && (
           <div data-testid="spec-summary" className="px-3 py-1.5 text-xs text-muted border-b border-border">
             {specSummary(card.spec)}
           </div>
@@ -192,9 +231,9 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
         )}
 
         {card.type === "new_design" && card.defaults.length > 0 && (
-          <div className="px-3 py-1.5 text-xs text-muted border-b border-border">
+          <p className="px-3 py-1.5 text-xs text-muted border-b border-border">
             {card.defaults.map(formatDefault).join(" · ")}
-          </div>
+          </p>
         )}
 
         {onChip && card.frameData && (
@@ -205,7 +244,7 @@ export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
                 type="button"
                 data-testid="next-step-chip"
                 onClick={() => onChip(chip)}
-                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:bg-accent hover:text-accent-fg transition-colors"
+                className="border border-border bg-surface px-2.5 py-1 text-xs text-muted hover:border-ink hover:text-text transition-colors"
               >
                 {chip}
               </button>

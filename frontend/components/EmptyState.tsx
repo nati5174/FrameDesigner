@@ -26,7 +26,7 @@ export function EmptyState({ onSelect }: EmptyStateProps) {
                 onClick={() => onSelect(ex.prompt)}
                 className="
                   px-4 py-2 rounded-full border border-border bg-surface
-                  text-sm text-text hover:border-accent hover:text-accent
+                  text-sm text-muted hover:border-ink hover:text-text
                   transition-colors
                 "
               >

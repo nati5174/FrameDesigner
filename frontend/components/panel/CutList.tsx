@@ -1,5 +1,6 @@
 import type { CutListRow, FrameSpec } from "@/lib/types";
 import { downloadCutListCsv } from "@/lib/csvExport";
+import { usd } from "@/lib/labels";
 
 interface CutListProps {
   rows: CutListRow[];
@@ -36,16 +37,16 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover, spec }:
                 onMouseLeave={() => onRowHover?.(null)}
                 className="
                   border-b border-border/50 last:border-b-0
-                  cursor-default transition-colors hover:bg-accent/5
+                  cursor-default transition-colors hover:bg-grid/60
                 "
               >
                 <td className="py-1 pr-3 text-text">{row.profile_id}</td>
                 <td className="py-1 pr-3 text-right text-text">
-                  {row.length_mm.toLocaleString()} mm
+                  {row.length_mm} mm
                 </td>
                 <td className="py-1 pr-3 text-right text-muted">×{row.qty}</td>
                 <td className="py-1 text-right text-muted">
-                  {row.total_mm.toLocaleString()} mm
+                  {row.total_mm} mm
                 </td>
               </tr>
             ))}
@@ -56,7 +57,7 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover, spec }:
                 Total bar length
               </td>
               <td className="pt-2 text-right text-sm font-medium text-text">
-                {grandTotal.toLocaleString()} mm
+                {grandTotal} mm
               </td>
             </tr>
             {hasWeight && (
@@ -75,7 +76,7 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover, spec }:
               </td>
               <td className="pt-1 text-right text-sm font-medium text-text">
                 {hasCost
-                  ? `$${totalCostUsd!.toFixed(2)}`
+                  ? `$${usd(totalCostUsd!)}`
                   : <span className="text-muted text-xs font-normal">n/a</span>
                 }
               </td>

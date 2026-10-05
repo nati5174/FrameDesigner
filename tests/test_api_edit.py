@@ -310,6 +310,69 @@ class TestSpecInvalid:
         assert r["outcome"] == "spec_invalid"
 
 
+# ── Shelf unit height / level consistency (BUG 1) ────────────────────────────
+
+# _SHELF_UNIT has height 1800, levels [600, 1200, 1800] — these ARE the
+# evenly-spaced defaults for 1800 mm / 3 levels.
+
+_SHELF_UNIT_MANUAL = {
+    **_SHELF_UNIT,
+    "level_heights_mm": [500.0, 1000.0, 1800.0],  # NOT evenly spaced → manual
+}
+
+
+class TestShelfUnitHeightEdit:
+    def test_height_add_default_levels(self) -> None:
+        """'make it 100 mm taller' on a default-levels shelf → levels recomputed."""
+        r = _edit("make it 100 mm taller", spec=_SHELF_UNIT)
+        assert r["outcome"] == "edit"
+        spec = r["spec"]
+        assert spec["height_mm"] == pytest.approx(1900.0)
+        levels = spec["level_heights_mm"]
+        assert len(levels) == 3
+        assert levels[-1] == pytest.approx(1900.0)
+        # Levels must be evenly spaced for 1900 mm / 3 levels
+        from framegen.parser.edit_dispatch import _evenly_spaced_levels
+        assert levels == pytest.approx(_evenly_spaced_levels(1900.0, 3))
+
+    def test_height_set_default_levels(self) -> None:
+        """'set height 2000 mm' on default-levels shelf → levels recomputed."""
+        r = _edit("set height 2000 mm", spec=_SHELF_UNIT)
+        assert r["outcome"] == "edit"
+        spec = r["spec"]
+        assert spec["height_mm"] == pytest.approx(2000.0)
+        levels = spec["level_heights_mm"]
+        assert levels[-1] == pytest.approx(2000.0)
+        from framegen.parser.edit_dispatch import _evenly_spaced_levels
+        assert levels == pytest.approx(_evenly_spaced_levels(2000.0, 3))
+
+    def test_height_shorter_too_tight(self) -> None:
+        """Shrinking height until spacing < 150 mm → spec_invalid."""
+        # 3 levels with height 300 mm → spacing 100 mm → too tight
+        r = _edit("height 300 mm", spec=_SHELF_UNIT)
+        assert r["outcome"] == "spec_invalid"
+
+    def test_height_add_manual_levels(self) -> None:
+        """Height change when levels are manual → clarify."""
+        r = _edit("make it 100 mm taller", spec=_SHELF_UNIT_MANUAL)
+        assert r["outcome"] == "clarify"
+        assert "level_heights_mm" in r.get("missing", [])
+
+    def test_level_count_manual_levels(self) -> None:
+        """'4 levels' when levels are manual → clarify."""
+        r = _edit("4 levels", spec=_SHELF_UNIT_MANUAL)
+        assert r["outcome"] == "clarify"
+        assert "level_heights_mm" in r.get("missing", [])
+
+    def test_level_count_default_levels(self) -> None:
+        """'4 levels' when levels are default → succeeds."""
+        r = _edit("4 levels", spec=_SHELF_UNIT)
+        assert r["outcome"] == "edit"
+        levels = r["spec"]["level_heights_mm"]
+        assert len(levels) == 4
+        assert levels[-1] == pytest.approx(1800.0)
+
+
 # ── Clarify continuation ──────────────────────────────────────────────────────
 
 class TestClarifyContinuation:

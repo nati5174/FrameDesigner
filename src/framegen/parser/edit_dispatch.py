@@ -10,6 +10,7 @@ Stage 2: LLM fallback added (see edit_llm.py).
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Literal
@@ -17,7 +18,9 @@ from typing import Literal
 from pydantic import ValidationError
 
 from framegen.parser.partial_spec import PartialSpec
-from framegen.spec import ShelfUnitSpec, TableSpec
+from framegen.spec import MIN_LEVEL_SPACING_MM, ShelfUnitSpec, TableSpec
+
+_log = logging.getLogger(__name__)
 
 # ── Result types ──────────────────────────────────────────────────────────────
 
@@ -151,6 +154,11 @@ def _evenly_spaced_levels(H: float, n: int) -> list[float]:
     return levels
 
 
+def _levels_are_default(levels: list[float], height: float) -> bool:
+    """True iff levels match the generator default for this height and count."""
+    return levels == _evenly_spaced_levels(height, len(levels))
+
+
 # ── Operation application ─────────────────────────────────────────────────────
 
 from framegen.parser.edit_rule import (  # noqa: E402
@@ -227,6 +235,28 @@ def _apply_and_return(
     old_dict = _spec_to_dict(old_spec)
     new_dict = _spec_to_dict(old_spec)  # mutable copy
 
+    is_shelf = old_dict.get("frame_type") == "shelf_unit"
+    old_levels: list[float] = list(old_dict.get("level_heights_mm") or [])
+    old_height: float = float(old_dict.get("height_mm", 0))
+    old_levels_are_default = (
+        is_shelf
+        and bool(old_levels)
+        and _levels_are_default(old_levels, old_height)
+    )
+
+    # If set_level_count is requested but levels were manually set, clarify
+    if is_shelf and not old_levels_are_default:
+        if any(op.op == "set_level_count" for op in ops):
+            return EditResult(
+                outcome="clarify",
+                missing=["level_heights_mm"],
+                error=(
+                    "The shelf levels are at custom heights — "
+                    "please also specify where the levels should be after the change."
+                ),
+                parser_used=parser_used,  # type: ignore[arg-type]
+            )
+
     for op in ops:
         err = _apply_op(new_dict, op)
         if err:
@@ -236,15 +266,51 @@ def _apply_and_return(
                 parser_used=parser_used,  # type: ignore[arg-type]
             )
 
+    # Post-process shelf units: if height changed but levels weren't touched,
+    # either recompute (default levels) or ask the user (manual levels).
+    if is_shelf and old_levels:
+        new_height: float = float(new_dict.get("height_mm", old_height))
+        height_changed = new_height != old_height
+        level_ops_present = any(
+            op.field == "level_heights_mm"
+            or op.op in ("add_level", "remove_level", "set_level_count")
+            for op in ops
+        )
+        if height_changed and not level_ops_present:
+            if old_levels_are_default:
+                recomputed = _evenly_spaced_levels(new_height, len(old_levels))
+                # Basic spacing guard — full validation happens in _dict_to_spec
+                spaces = [recomputed[0]] + [
+                    recomputed[i] - recomputed[i - 1] for i in range(1, len(recomputed))
+                ]
+                if any(s < MIN_LEVEL_SPACING_MM for s in spaces):
+                    return EditResult(
+                        outcome="spec_invalid",
+                        error="I could not apply that change. The frame is unchanged.",
+                        parser_used=parser_used,  # type: ignore[arg-type]
+                    )
+                new_dict["level_heights_mm"] = recomputed
+            else:
+                return EditResult(
+                    outcome="clarify",
+                    missing=["level_heights_mm"],
+                    error=(
+                        "The shelf levels are at custom heights — "
+                        "please also specify where the levels should be "
+                        "after the change."
+                    ),
+                    parser_used=parser_used,  # type: ignore[arg-type]
+                )
+
     changes = _build_changes(old_dict, new_dict)
 
     try:
         new_spec = _dict_to_spec(new_dict)
     except ValidationError as exc:
-        msgs = "; ".join(e["msg"] for e in exc.errors())
+        _log.error("spec_validation_error after edit: %s", exc)
         return EditResult(
             outcome="spec_invalid",
-            error=msgs,
+            error="I could not apply that change. The frame is unchanged.",
             parser_used=parser_used,  # type: ignore[arg-type]
         )
 

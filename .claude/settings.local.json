@@ -25,7 +25,9 @@
       "Bash(do echo \"=== $f ===\")",
       "Read(//c/Users/netha/yc/frame_designer/**)",
       "Bash(done)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)"
     ]
   }
 }

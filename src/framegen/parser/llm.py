@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from typing import Any, Protocol
@@ -10,6 +11,8 @@ from pydantic import ValidationError
 from framegen._llm_counter import CAP_NOTE, DailyCapReached, check_and_increment
 from framegen.parser import _TABLE_WORD_RE, ParseResult
 from framegen.spec import ShelfUnitSpec, TableSpec
+
+_log = logging.getLogger(__name__)
 
 # ── Client protocol (injectable for tests) ────────────────────────────────────
 
@@ -220,11 +223,14 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
                 )
             )
         except ValidationError as exc:
-            msgs = "; ".join(e["msg"] for e in exc.errors())
+            _log.warning("spec_invalid shelf_unit: %s", exc)
             return ParseResult(
                 outcome="spec_invalid",
                 spec=None,
-                error=msgs,
+                error=(
+                    "I could not build a frame from that description. "
+                    "Please check the dimensions and try again."
+                ),
                 parser_used="llm",
             )
         return ParseResult(
@@ -263,11 +269,14 @@ def _materialise(data: dict[str, Any], original_text: str) -> ParseResult:  # no
             )
         )
     except ValidationError as exc:
-        msgs = "; ".join(e["msg"] for e in exc.errors())
+        _log.warning("spec_invalid table: %s", exc)
         return ParseResult(
             outcome="spec_invalid",
             spec=None,
-            error=msgs,
+            error=(
+                "I could not build a frame from that description. "
+                "Please check the dimensions and try again."
+            ),
             parser_used="llm",
         )
     return ParseResult(

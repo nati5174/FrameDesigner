@@ -5,11 +5,9 @@ import { toThree } from "@/lib/coordinates";
 
 const MM = 1 / 1000;
 
-function roleColor(role: string): string {
-  if (role === "leg" || role === "centre_leg") return "#4A7FB5";
-  if (role.includes("shelf")) return "#C8963C";
-  if (role.includes("depth")) return "#7DB3D5";
-  return "#6B9EC4";
+// Single neutral tone for all bars — governing rail gets accent via governingBarIndex.
+function roleColor(_role: string): string {
+  return "#5A6E82";
 }
 
 /** Ease-out cubic. */
@@ -22,7 +20,9 @@ interface FrameBarProps {
   end: [number, number, number];
   profileWidthMm: number;
   role: string;
+  barIndex: number;
   highlightLength: number | null;
+  governingBarIndex: number | null;
   /** Delay before this bar's entrance animation starts (ms). */
   animDelay: number;
 }
@@ -32,7 +32,9 @@ export function FrameBar({
   end,
   profileWidthMm,
   role,
+  barIndex,
   highlightLength,
+  governingBarIndex,
   animDelay,
 }: FrameBarProps) {
   const meshRef = useRef<THREE.Mesh>(null!);
@@ -72,14 +74,19 @@ export function FrameBar({
 
   const lit =
     highlightLength !== null && Math.abs(lengthMm - highlightLength) < 0.5;
+  const isGoverning = governingBarIndex !== null && barIndex === governingBarIndex;
+
+  const color = lit ? "#FFD54F" : isGoverning ? "#C2410C" : roleColor(role);
+  const emissive = lit ? "#E65C00" : isGoverning ? "#7A2008" : "#000000";
+  const emissiveIntensity = lit ? 0.35 : isGoverning ? 0.25 : 0;
 
   return (
     <mesh ref={meshRef} position={center} quaternion={quat} scale={0}>
       <boxGeometry args={[w, length, w]} />
       <meshStandardMaterial
-        color={lit ? "#FFD54F" : roleColor(role)}
-        emissive={lit ? "#E65C00" : "#000000"}
-        emissiveIntensity={lit ? 0.35 : 0}
+        color={color}
+        emissive={emissive}
+        emissiveIntensity={emissiveIntensity}
         roughness={0.5}
         metalness={0.3}
       />

@@ -138,6 +138,64 @@
           "centre_legs": true
         }
       }
+    },
+    {
+      "id": "R11",
+      "group": "shelf_height_level_consistency",
+      "text": "make it 100 mm taller",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 900, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600.0, 1200.0, 1800.0],
+        "load_per_level_kg": 30.0, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"height_mm": 1900, "level_heights_mm": [633.0, 1267.0, 1900.0]}
+      }
+    },
+    {
+      "id": "R12",
+      "group": "shelf_height_level_consistency",
+      "text": "height 2000 mm",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 900, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [600.0, 1200.0, 1800.0],
+        "load_per_level_kg": 30.0, "centre_legs": false
+      },
+      "expected": {
+        "outcome": "edit",
+        "spec": {"height_mm": 2000, "level_heights_mm": [667.0, 1333.0, 2000.0]}
+      }
+    },
+    {
+      "id": "R13",
+      "group": "shelf_height_level_consistency",
+      "text": "make it 100 mm taller",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 900, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [500.0, 1000.0, 1800.0],
+        "load_per_level_kg": 30.0, "centre_legs": false
+      },
+      "expected": {"outcome": "clarify"}
+    },
+    {
+      "id": "R14",
+      "group": "shelf_height_level_consistency",
+      "text": "4 levels",
+      "input_spec": {
+        "frame_type": "shelf_unit",
+        "width_mm": 900, "depth_mm": 400, "height_mm": 1800,
+        "profile_series": "40-series",
+        "level_heights_mm": [500.0, 1000.0, 1800.0],
+        "load_per_level_kg": 30.0, "centre_legs": false
+      },
+      "expected": {"outcome": "clarify"}
     }
   ]
 }

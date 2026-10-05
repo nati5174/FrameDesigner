@@ -195,7 +195,7 @@ def test_shelf_above_height_returns_400() -> None:
         "/frame", params={"width": 1500, "depth": 700, "height": 900, "shelf": 950}
     )
     assert resp.status_code == 400
-    assert "shelf_height_mm" in resp.json()["detail"]
+    assert resp.json()["detail"]  # non-empty error message
 
 
 def test_unknown_series_returns_400() -> None:

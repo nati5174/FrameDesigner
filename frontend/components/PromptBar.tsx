@@ -52,7 +52,7 @@ export function PromptBar({
           "
         >
           {loading && <Spinner size="sm" />}
-          {loading ? "Parsing…" : "Generate"}
+          {loading ? "Sending…" : "Send"}
         </button>
       </form>
       {error && <ErrorBanner message={error} onDismiss={onDismissError} />}

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Bounds, useBounds, Text, Billboard } from "@react-three/drei";
+import { OrbitControls, Grid, Bounds, useBounds, Html } from "@react-three/drei";
 import type { BarData } from "@/lib/types";
 import { toThree } from "@/lib/coordinates";
 import { FrameBar } from "./FrameBar";
@@ -55,7 +55,7 @@ function AutoFit({ bars }: { bars: BarData[] }) {
       box.getSize(size);
       const maxDim = Math.max(size.x, size.y, size.z);
       const fov = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
-      const dist = (maxDim * 0.5) / Math.tan(fov * 0.5) * 1.7;
+      const dist = (maxDim * 0.5) / Math.tan(fov * 0.5) * 1.5;
       camera.position.set(
         center.x + dist * 0.55,
         center.y + dist * 0.45,
@@ -79,7 +79,19 @@ interface DimsProps {
   dims: { widthMm: number; depthMm: number; heightMm: number };
 }
 
-// ─── Dimension labels (WebGL Text — no separate React roots) ─────────────────
+// ─── Dimension labels (HTML overlay — fixed 13px size at any zoom) ───────────
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: "13px",
+  fontFamily: "var(--font-ibm-plex-mono), ui-monospace, monospace",
+  color: "var(--ink)",
+  background: "var(--surface)",
+  border: "1px solid var(--rule)",
+  padding: "2px 6px",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  userSelect: "none",
+};
 
 function DimensionLabels({ bars, dims }: DimsProps) {
   const bbox = useMemo(() => {
@@ -98,37 +110,34 @@ function DimensionLabels({ bars, dims }: DimsProps) {
   const { min, max } = bbox;
   const GAP = 0.07;
 
-  const textProps = {
-    fontSize: 0.055,
-    color: "#E6E3DD",
-    anchorX: "center" as const,
-    anchorY: "middle" as const,
-    outlineColor: "#1A1A24",
-    outlineWidth: 0.008,
-  };
-
   return (
     <>
       {/* Width — below front bottom edge, centred X */}
-      <Billboard position={[(min.x + max.x) / 2, min.y - GAP * 0.8, max.z + GAP * 0.5]}>
-        <Text {...textProps}>
-          {`W  ${dims.widthMm.toLocaleString()} mm`}
-        </Text>
-      </Billboard>
+      <Html
+        position={[(min.x + max.x) / 2, min.y - GAP * 0.9, max.z + GAP * 0.4]}
+        center
+        zIndexRange={[100, 0]}
+      >
+        <div style={LABEL_STYLE}>{`${dims.widthMm} mm`}</div>
+      </Html>
 
       {/* Depth — right of right-bottom edge, centred Z */}
-      <Billboard position={[max.x + GAP * 0.5, min.y - GAP * 0.8, (min.z + max.z) / 2]}>
-        <Text {...textProps}>
-          {`D  ${dims.depthMm.toLocaleString()} mm`}
-        </Text>
-      </Billboard>
+      <Html
+        position={[max.x + GAP * 0.6, min.y - GAP * 0.9, (min.z + max.z) / 2]}
+        center
+        zIndexRange={[100, 0]}
+      >
+        <div style={LABEL_STYLE}>{`${dims.depthMm} mm`}</div>
+      </Html>
 
       {/* Height — left of front-left edge, centred Y */}
-      <Billboard position={[min.x - GAP * 0.5, (min.y + max.y) / 2, max.z + GAP * 0.5]}>
-        <Text {...textProps}>
-          {`H  ${dims.heightMm.toLocaleString()} mm`}
-        </Text>
-      </Billboard>
+      <Html
+        position={[min.x - GAP * 0.6, (min.y + max.y) / 2, max.z + GAP * 0.4]}
+        center
+        zIndexRange={[100, 0]}
+      >
+        <div style={LABEL_STYLE}>{`${dims.heightMm} mm`}</div>
+      </Html>
     </>
   );
 }
@@ -139,11 +148,12 @@ export interface FrameViewerProps {
   bars: BarData[];
   dims?: { widthMm: number; depthMm: number; heightMm: number };
   highlightLength: number | null;
+  governingBarIndex: number | null;
   /** Increments on each new frame load — forces bars to remount and replay animation. */
   frameKey: number;
 }
 
-export function FrameViewer({ bars, dims, highlightLength, frameKey }: FrameViewerProps) {
+export function FrameViewer({ bars, dims, highlightLength, governingBarIndex, frameKey }: FrameViewerProps) {
   const entries = useMemo(() => barsWithDelays(bars), [bars]);
 
   return (
@@ -165,7 +175,9 @@ export function FrameViewer({ bars, dims, highlightLength, frameKey }: FrameView
             end={bar.end}
             profileWidthMm={bar.profile_width_mm}
             role={bar.role}
+            barIndex={i}
             highlightLength={highlightLength}
+            governingBarIndex={governingBarIndex}
             animDelay={delay}
           />
         ))}
@@ -176,11 +188,11 @@ export function FrameViewer({ bars, dims, highlightLength, frameKey }: FrameView
       <Grid
         args={[10, 10]}
         position={[0, -0.001, 0]}
-        cellColor="#aaaaaa"
-        sectionColor="#888888"
+        cellColor="#d0d6dc"
+        sectionColor="#c0c8ce"
         cellSize={0.1}
         sectionSize={0.5}
-        fadeDistance={6}
+        fadeDistance={4}
         infiniteGrid
       />
 
@@ -190,7 +202,7 @@ export function FrameViewer({ bars, dims, highlightLength, frameKey }: FrameView
 }
 
 export function FrameViewerCanvas({
-  bars, dims, highlightLength, frameKey,
+  bars, dims, highlightLength, governingBarIndex, frameKey,
 }: FrameViewerProps) {
   return (
     <Suspense fallback={<ViewerFallback text="Loading viewer…" />}>
@@ -198,6 +210,7 @@ export function FrameViewerCanvas({
         bars={bars}
         dims={dims}
         highlightLength={highlightLength}
+        governingBarIndex={governingBarIndex}
         frameKey={frameKey}
       />
     </Suspense>
