@@ -40,7 +40,7 @@ describe("CutList", () => {
   it("shows cost and disclaimer when totalCostUsd is provided", () => {
     render(<CutList rows={ROWS} totalCostUsd={42.5} />);
     expect(screen.getByText("$42.50")).toBeInTheDocument();
-    expect(screen.getByText(/Excludes brackets and fasteners/)).toBeInTheDocument();
+    expect(screen.getByText(/See Parts list/)).toBeInTheDocument();
     expect(screen.queryByText(/no price data/)).not.toBeInTheDocument();
   });
 });

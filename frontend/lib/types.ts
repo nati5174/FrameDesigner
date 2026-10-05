@@ -59,6 +59,7 @@ export interface EditResponse {
 export type AssistantCard =
   | { type: "new_design"; spec: FrameSpec; changes: FieldChange[]; defaults: string[]; frameData: FrameResponse | null }
   | { type: "edit";        spec: FrameSpec; changes: FieldChange[]; frameData: FrameResponse | null }
+  | { type: "example";     spec: FrameSpec; message: string; frameData: FrameResponse | null }
   | { type: "clarify";     pending: PartialSpec; missing: string[] }
   | { type: "unsupported"; message: string }
   | { type: "error";       message: string }
@@ -191,6 +192,15 @@ export interface FixCandidate {
   concentrated_warning_remains: boolean;
 }
 
+export interface PartsListRow {
+  part_number: string;
+  description: string;
+  qty: number;
+  unit_price_usd: number;
+  line_total_usd: number;
+  source_url: string;
+}
+
 export interface FrameResponse {
   bars: BarData[];
   cut_list: CutListRow[];
@@ -199,4 +209,10 @@ export interface FrameResponse {
   check_report: CheckReport;
   suggestions: FixCandidate[];
   cost_suggestion: FixCandidate | null;
+  parts_list: PartsListRow[];
+  hardware_cost_usd: number | null;
+  hardware_weight_kg: number | null;
+  total_cost_usd: number | null;
+  total_weight_kg: number | null;
+  hardware_priced: boolean;
 }

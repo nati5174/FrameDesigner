@@ -105,6 +105,38 @@ function specSummary(spec: FrameSpec): string {
 }
 
 export function AssistantCard({ card, spec, onRestore, onChip }: Props) {
+  if (card.type === "example") {
+    return (
+      <div className="rounded-lg border border-border bg-surface text-sm overflow-hidden">
+        <div className="px-3 py-2 border-b border-border">
+          <p className="text-sm text-text">{card.message}</p>
+        </div>
+
+        {card.frameData?.check_report && (
+          <div className="px-3 py-2 border-b border-border">
+            <StatusBadge checkReport={card.frameData.check_report} />
+          </div>
+        )}
+
+        {onChip && card.frameData && (
+          <div className="flex flex-wrap gap-1.5 px-3 py-2">
+            {nextStepChips(card.frameData, card.spec).map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                data-testid="next-step-chip"
+                onClick={() => onChip(chip)}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:bg-accent hover:text-accent-fg transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (card.type === "loading") {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-3 text-sm text-muted">

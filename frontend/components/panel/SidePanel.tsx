@@ -6,6 +6,7 @@ import { CollapsibleSection } from "@/components/panel/CollapsibleSection";
 import { DimensionsForm } from "@/components/panel/DimensionsForm";
 import { CutList } from "@/components/panel/CutList";
 import { LoadCheck } from "@/components/panel/LoadCheck";
+import { PartsList } from "@/components/panel/PartsList";
 import { Suggestions } from "@/components/panel/Suggestions";
 import { SuggestionCard } from "@/components/panel/SuggestionCard";
 
@@ -210,6 +211,19 @@ function PanelContent({
               totalCostUsd={frameData.cut_list_total_cost_usd}
               totalWeightKg={frameData.cut_list_total_weight_kg}
               onRowHover={onCutListRowHover}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Parts list" defaultOpen={false}>
+            <PartsList
+              rows={frameData.parts_list ?? []}
+              hardwareCostUsd={frameData.hardware_cost_usd ?? null}
+              hardwareWeightKg={frameData.hardware_weight_kg ?? null}
+              barsCostUsd={frameData.cut_list_total_cost_usd}
+              barsWeightKg={frameData.cut_list_total_weight_kg}
+              totalCostUsd={frameData.total_cost_usd ?? null}
+              totalWeightKg={frameData.total_weight_kg ?? null}
+              hardwarePriced={frameData.hardware_priced ?? false}
             />
           </CollapsibleSection>
 

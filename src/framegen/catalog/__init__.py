@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 _CATALOG_PATH = (
-    Path(__file__).parent.parent.parent.parent / "data" / "catalog" / "catalog-v3.json"
+    Path(__file__).parent.parent.parent.parent / "data" / "catalog" / "catalog-v4.json"
 )
 
 
@@ -28,16 +28,46 @@ class Profile(BaseModel):
     source_url: str
 
 
+class ConnectorPart(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    part_number: str
+    description: str
+    qty_per_joint: int
+    unit_price_usd: float
+    weight_lbs: float | None = None
+    weight_kg: float | None = None
+    series: str
+    source: str
+    source_url: str
+    source_date: str
+    source_note: str
+
+
+class JointConnector(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    joint_type: str
+    note: str | None = None
+    parts_per_joint: list[ConnectorPart]
+
+
 class Catalog(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     version: int
     cut_charge_usd: float | None = None
+    connectors: dict[str, JointConnector] | None = None
     profiles: dict[str, Profile]
 
 
 def load_catalog(path: Path = _CATALOG_PATH) -> Catalog:
     catalog = Catalog.model_validate_json(path.read_text())
+    if catalog.connectors is None:
+        print(
+            "WARNING: catalog: connectors section absent; hardware pricing unavailable",
+            file=sys.stderr,
+        )
     for profile in catalog.profiles.values():
         if profile.price_per_metre is None:
             print(

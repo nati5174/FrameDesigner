@@ -25,6 +25,7 @@ from framegen.checks import CheckReport, run_checks
 from framegen.generate import Bar
 from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
+from framegen.outputs.parts_list import PartsListResult, build_parts_list
 from framegen.spec import ShelfUnitSpec, TableSpec
 
 FixType = Literal[
@@ -307,10 +308,16 @@ def suggest_cheaper_profile(
     profile: Profile,
     check_report: CheckReport,
     catalog: Catalog,
+    *,
+    current_parts: PartsListResult | None = None,
 ) -> FixCandidate | None:
     """
     If the frame already passes and a cheaper profile also passes,
     return a FixCandidate for switching profiles.  Returns None otherwise.
+
+    When current_parts is supplied and both the current and candidate profiles
+    have hardware priced, total_cost (bars + hardware) is used for comparison
+    and reported in the trade-off string.  Otherwise bars-only cost is used.
     """
     if not check_report.passed:
         return None
@@ -322,7 +329,7 @@ def suggest_cheaper_profile(
     cut_charge = catalog.cut_charge_usd or 0.0
     current_conc_warn = _conc_warns(check_report)
 
-    # Collect cheaper profiles, sorted by price ascending
+    # Collect cheaper profiles by bars price_per_mm, sorted ascending
     cheaper: list[Profile] = sorted(
         (
             p for p in catalog.profiles.values()
@@ -357,18 +364,36 @@ def suggest_cheaper_profile(
                 cur_bars = generate_shelf_unit(spec, profile)
             else:
                 cur_bars = generate_table(spec, profile)
-            cur_cost = _build_cost(cur_bars, current_price, cut_charge)
-            alt_cost = _build_cost(alt_bars, alt.price_per_mm, cut_charge)  # type: ignore[arg-type]
-            saving = cur_cost - alt_cost
+            cur_bars_cost = _build_cost(cur_bars, current_price, cut_charge)
+            alt_bars_cost = _build_cost(alt_bars, alt.price_per_mm, cut_charge)  # type: ignore[arg-type]
+
+            # Use total cost (bars + hardware) when both profiles have hardware data
+            alt_parts = build_parts_list(alt_bars, catalog.connectors, alt_series)
+            use_total = (
+                current_parts is not None
+                and current_parts.hardware_priced
+                and alt_parts.hardware_priced
+                and current_parts.hardware_cost_usd is not None
+                and alt_parts.hardware_cost_usd is not None
+            )
+            if use_total and current_parts is not None:
+                cur_total = cur_bars_cost + current_parts.hardware_cost_usd  # type: ignore[operator]
+                alt_total = alt_bars_cost + alt_parts.hardware_cost_usd  # type: ignore[operator]
+                saving = cur_total - alt_total
+                cost_label = "total"
+            else:
+                saving = cur_bars_cost - alt_bars_cost
+                cost_label = "bars"
+
             if introduces_conc_warn:
                 trade_off = (
-                    f"Switch to {alt_series} (saves ~${saving:.2f} on bars). "
+                    f"Switch to {alt_series} (saves ~${saving:.2f} on {cost_label}). "
                     f"Note: introduces a concentrated-load warning not present "
                     f"on the current design."
                 )
             else:
                 trade_off = (
-                    f"Switch to {alt_series} and save ~${saving:.2f} on bars."
+                    f"Switch to {alt_series} and save ~${saving:.2f} on {cost_label}."
                 )
         except ValueError:
             trade_off = f"Switch to {alt_series} for lower cost."

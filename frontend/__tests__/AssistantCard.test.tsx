@@ -149,6 +149,8 @@ const PASSING_REPORT: CheckReport = {
 const FRAME_DATA_PASS: FrameResponse = {
   bars: [], cut_list: [], cut_list_total_cost_usd: null, cut_list_total_weight_kg: null,
   check_report: PASSING_REPORT, suggestions: [], cost_suggestion: null,
+  parts_list: [], hardware_cost_usd: null, hardware_weight_kg: null,
+  total_cost_usd: null, total_weight_kg: null, hardware_priced: false,
 };
 
 const CONCENTRATED_FAIL_REPORT: CheckReport = {
@@ -271,6 +273,46 @@ describe("AssistantCard next-step chips", () => {
     };
     render(<AssistantCard card={card} spec={SPEC} />);
     expect(screen.queryAllByTestId("next-step-chip")).toHaveLength(0);
+  });
+});
+
+describe("AssistantCard example (first-visit auto-load)", () => {
+  it("shows the example message", () => {
+    const card: AssistantCardType = {
+      type: "example",
+      spec: SPEC,
+      message: "Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg",
+      frameData: null,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    expect(
+      screen.getByText(
+        "Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("shows StatusBadge when frameData is provided", () => {
+    const card: AssistantCardType = {
+      type: "example",
+      spec: SPEC,
+      message: "Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg",
+      frameData: FRAME_DATA_PASS,
+    };
+    render(<AssistantCard card={card} spec={SPEC} />);
+    expect(screen.getByLabelText(/Load check:/)).toBeInTheDocument();
+  });
+
+  it("shows next-step chips when frameData and onChip provided", () => {
+    const onChip = vi.fn();
+    const card: AssistantCardType = {
+      type: "example",
+      spec: SPEC,
+      message: "Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg",
+      frameData: FRAME_DATA_PASS,
+    };
+    render(<AssistantCard card={card} spec={SPEC} onChip={onChip} />);
+    expect(screen.getAllByTestId("next-step-chip").length).toBeGreaterThanOrEqual(1);
   });
 });
 

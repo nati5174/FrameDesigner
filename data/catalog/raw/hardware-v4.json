@@ -1,0 +1,186 @@
+{
+  "_note": "Hardware catalog — one 2-hole inside corner bracket per rail end, 2 bolts, 2 T-nuts per joint.",
+  "_read_method": "search result snapshot",
+  "_read_date": "2026-10-05",
+  "_default_source_note": "automated read, not confirmed by a person",
+  "_weight_unit_source": "https://8020.net/20-4119.html (page states '0.011000 lbs')",
+  "_weight_unit": "lbs",
+  "connectors": {
+    "20-series": {
+      "joint_type": "2-hole inside corner bracket",
+      "parts_per_joint": [
+        {
+          "part_number": "20-4119",
+          "description": "20 Series 2 Hole Inside Corner Bracket, Al 6063-T6, clear anodize, 20x20 mm",
+          "qty_per_joint": 1,
+          "unit_price_usd": 5.15,
+          "weight_lbs": 0.011000,
+          "weight_kg": 0.004990,
+          "series": "20-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/20-4119.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "11-5308",
+          "description": "M5x8mm Button Head Socket Cap Screw (BHSCS), steel, zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.53,
+          "weight_lbs": 0.004000,
+          "weight_kg": 0.001814,
+          "series": "20-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/11-5308.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "14122",
+          "description": "M5 Slide-In Economy T-Nut Block, steel, bright zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.37,
+          "weight_lbs": 0.003000,
+          "weight_kg": 0.001361,
+          "series": "20-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/14122.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        }
+      ]
+    },
+    "30-series": {
+      "joint_type": "2-hole inside corner bracket",
+      "parts_per_joint": [
+        {
+          "part_number": "30-4302",
+          "description": "30 Series 2 Hole Inside Corner Bracket, Al 6063-T6, clear anodize, 30x30 mm",
+          "qty_per_joint": 1,
+          "unit_price_usd": 5.25,
+          "weight_lbs": 0.034000,
+          "weight_kg": 0.015422,
+          "series": "30-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/30-4302.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "11-6312",
+          "description": "M6x12mm Button Head Socket Cap Screw (BHSCS), steel, zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.61,
+          "weight_lbs": 0.007000,
+          "weight_kg": 0.003175,
+          "series": "30-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/11-6312.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "13117",
+          "description": "30 Series M6 Standard Drop-In T-Nut, steel, bright zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 1.30,
+          "weight_lbs": 0.007000,
+          "weight_kg": 0.003175,
+          "series": "30-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/13117.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        }
+      ]
+    },
+    "40-series": {
+      "joint_type": "2-hole inside corner bracket",
+      "parts_per_joint": [
+        {
+          "part_number": "40-4302",
+          "description": "40 Series 2 Hole Inside Corner Bracket, Al 6063-T6, clear anodize, 40x40 mm",
+          "qty_per_joint": 1,
+          "unit_price_usd": 5.31,
+          "weight_lbs": 0.090000,
+          "weight_kg": 0.040823,
+          "series": "40-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/40-4302.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "13-8316",
+          "description": "M8x16mm Button Head Socket Cap Screw (BHSCS), steel, zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.61,
+          "weight_lbs": 0.017000,
+          "weight_kg": 0.007711,
+          "series": "40-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/13-8316.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "3838",
+          "description": "M8 Slide-In Economy T-Nut, offset thread, steel, bright zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.53,
+          "weight_lbs": 0.020000,
+          "weight_kg": 0.009072,
+          "series": "40-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/3838.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        }
+      ]
+    },
+    "45-series": {
+      "joint_type": "2-hole inside corner bracket",
+      "parts_per_joint": [
+        {
+          "part_number": "45-4302",
+          "description": "45 Series 2 Hole Inside Corner Bracket, Al 6063-T6, clear anodize, 45x45 mm",
+          "qty_per_joint": 1,
+          "unit_price_usd": 5.40,
+          "weight_lbs": 0.120000,
+          "weight_kg": 0.054431,
+          "series": "45-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/45-4302.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        },
+        {
+          "part_number": "11-8318",
+          "description": "M8x18mm Button Head Socket Cap Screw (BHSCS), steel, zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 0.50,
+          "weight_lbs": 0.018000,
+          "weight_kg": 0.008165,
+          "series": "45-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/11-8318.html",
+          "source_date": "2026-10-05",
+          "source_note": "confirmed by a person, 2026-10-05"
+        },
+        {
+          "part_number": "13132",
+          "description": "45 Series M8 Standard Drop-In T-Nut, steel, bright zinc",
+          "qty_per_joint": 2,
+          "unit_price_usd": 1.19,
+          "weight_lbs": 0.011900,
+          "weight_kg": 0.005398,
+          "series": "45-series",
+          "source": "80/20",
+          "source_url": "https://8020.net/13132.html",
+          "source_date": "2026-10-05",
+          "source_note": "automated read, not confirmed by a person"
+        }
+      ]
+    }
+  }
+}

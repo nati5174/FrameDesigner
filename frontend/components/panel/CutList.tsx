@@ -83,7 +83,7 @@ export function CutList({ rows, totalCostUsd, totalWeightKg, onRowHover }: CutLi
 
       <p className="text-xs text-muted leading-snug">
         {hasCost
-          ? "Bars only, USD. Excludes brackets and fasteners (which differ by profile size), shipping and tax. Prices read on 2026-10-04."
+          ? "Bars only, USD. See Parts list below for brackets, fasteners, and total. Excludes shipping and tax. Prices read 2026-10-04."
           : "Cost not available — no price data for this profile series. Excludes brackets and fasteners, shipping and tax."
         }
       </p>

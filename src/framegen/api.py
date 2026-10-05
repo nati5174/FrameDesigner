@@ -28,6 +28,7 @@ from framegen.checks import run_checks
 from framegen.generate.shelf_unit import generate_shelf_unit
 from framegen.generate.table import generate_table
 from framegen.outputs.cut_list import build_cut_list
+from framegen.outputs.parts_list import build_parts_list
 from framegen.parser import parse as parser_parse
 from framegen.spec import ShelfUnitSpec, TableSpec
 from framegen.suggestions import FixCandidate, suggest_cheaper_profile, suggest_fixes
@@ -257,9 +258,30 @@ def _run_frame(
         mass_per_metre_kg=profile.mass_per_metre_kg,
         cut_charge_usd=_CATALOG.cut_charge_usd,
     )
+    parts = build_parts_list(bars, _CATALOG.connectors, profile_series)
     check_report = run_checks(bars, spec, profile)
     suggestions = suggest_fixes(spec, profile, check_report)
-    cost_suggestion = suggest_cheaper_profile(spec, profile, check_report, _CATALOG)
+    cost_suggestion = suggest_cheaper_profile(
+        spec, profile, check_report, _CATALOG,
+        current_parts=parts,
+    )
+
+    hardware_cost = parts.hardware_cost_usd if parts.hardware_priced else None
+    bars_cost = cut_list.total_cost_usd
+    total_cost: float | None = (
+        round(bars_cost + hardware_cost, 2)
+        if bars_cost is not None and hardware_cost is not None
+        else None
+    )
+
+    # Weight breakdown: bars + hardware
+    bars_weight = cut_list.total_weight_kg
+    hardware_weight = parts.hardware_weight_kg if parts.hardware_priced else None
+    total_weight: float | None = (
+        round(bars_weight + hardware_weight, 6)
+        if bars_weight is not None and hardware_weight is not None
+        else bars_weight
+    )
 
     return {
         "bars": [
@@ -289,6 +311,22 @@ def _run_frame(
         "cost_suggestion": (
             _serialise_candidate(cost_suggestion) if cost_suggestion else None
         ),
+        "parts_list": [
+            {
+                "part_number": row.part_number,
+                "description": row.description,
+                "qty": row.qty,
+                "unit_price_usd": row.unit_price_usd,
+                "line_total_usd": row.line_total_usd,
+                "source_url": row.source_url,
+            }
+            for row in parts.rows
+        ],
+        "hardware_cost_usd": hardware_cost,
+        "hardware_weight_kg": hardware_weight,
+        "total_cost_usd": total_cost,
+        "total_weight_kg": total_weight,
+        "hardware_priced": parts.hardware_priced,
     }
 
 

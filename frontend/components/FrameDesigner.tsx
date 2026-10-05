@@ -15,7 +15,7 @@ import { useEditApi } from "@/hooks/useEditApi";
 import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { useThread } from "@/hooks/useThread";
 import { useSuggestApi } from "@/hooks/useSuggestApi";
-import { DEFAULT_SPEC } from "@/lib/examples";
+import { DEFAULT_SPEC, EXAMPLES } from "@/lib/examples";
 
 // ── Helpers for form-edit thread entries ──────────────────────────────────────
 
@@ -108,14 +108,36 @@ export function FrameDesigner() {
 
   // ── Auto-load default design on first visit ────────────────────────────────
 
+  const { addLoadingEntry, resolveLastEntry } = thread;
+
   useEffect(() => {
     if (!serverReady) return;
     if (!thread.hydrated) return;
     if (thread.entries.length > 0 || thread.currentSpec) return;
     if (autoLoadedRef.current) return;
     autoLoadedRef.current = true;
-    void generate(DEFAULT_SPEC);
-  }, [serverReady, thread.hydrated, thread.entries.length, thread.currentSpec, generate]);
+
+    addLoadingEntry();
+    void (async () => {
+      const data = await generate(DEFAULT_SPEC);
+      const card: AssistantCard = {
+        type: "example",
+        spec: DEFAULT_SPEC,
+        message:
+          "Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg",
+        frameData: data,
+      };
+      resolveLastEntry(card, DEFAULT_SPEC, null);
+    })();
+  }, [
+    serverReady,
+    thread.hydrated,
+    thread.entries.length,
+    thread.currentSpec,
+    generate,
+    addLoadingEntry,
+    resolveLastEntry,
+  ]);
 
   // ── Submit prompt ──────────────────────────────────────────────────────────
 
@@ -245,6 +267,10 @@ export function FrameDesigner() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const hasThread = thread.entries.length > 0;
+  // True when only the auto-loaded example entry exists and no user message yet.
+  // Subtitle and example prompts remain visible until the user submits.
+  const isExampleState = hasThread && thread.entries.every((e) => e.role === "assistant");
+
   const threadProps = {
     entries: thread.entries,
     onRestoreSpec: handleRestore,
@@ -293,6 +319,28 @@ export function FrameDesigner() {
         {hasThread && (
           <aside className="hidden md:flex flex-col w-72 shrink-0 border-r border-border bg-background overflow-y-auto">
             <ConversationThread {...threadProps} />
+            {isExampleState && (
+              <div className="flex flex-col gap-3 px-3 py-4 border-t border-border">
+                <p className="text-sm text-muted leading-relaxed">
+                  Describe a frame. Get a 3D model, cut list, cost and load estimate.
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-muted">Try an example</p>
+                  <div className="flex flex-wrap gap-2">
+                    {EXAMPLES.map((ex) => (
+                      <button
+                        key={ex.prompt}
+                        type="button"
+                        onClick={() => handleExampleSelect(ex.prompt)}
+                        className="px-3 py-1.5 rounded-full border border-border bg-surface text-sm text-text hover:border-accent hover:text-accent transition-colors"
+                      >
+                        {ex.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </aside>
         )}
 
@@ -349,6 +397,8 @@ export function FrameDesigner() {
           entries={thread.entries}
           onRestoreSpec={handleRestore}
           onChip={(text) => void submitPrompt(text)}
+          isExampleState={isExampleState}
+          onExampleSelect={handleExampleSelect}
         />
       </div>
 

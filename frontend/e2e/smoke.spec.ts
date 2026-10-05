@@ -126,3 +126,57 @@ test("smoke: 1500×700×900 table at 100 kg — no errors, no overflow, badge, c
     `Console errors:\n${allConsoleErrors.join("\n")}`
   ).toHaveLength(0);
 });
+
+test("first-visit: thread column, example card, subtitle, and example prompts visible", async ({
+  browser,
+}: {
+  browser: Browser;
+}) => {
+  const FIRST_VISIT_VIEWPORTS = [
+    { name: "1920x1080", width: 1920, height: 1080 },
+    { name: "375x812",   width: 375,   height: 812  },
+  ] as const;
+
+  for (const vp of FIRST_VISIT_VIEWPORTS) {
+    const context: BrowserContext = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      storageState: { cookies: [], origins: [] },
+    });
+    await context.addInitScript(() => localStorage.clear());
+    const page: Page = await context.newPage();
+    await page.goto("/");
+
+    if (vp.width >= 768) {
+      // Desktop: thread column (aside) is visible; wait for example card there.
+      // The aside has class "hidden md:flex" so at ≥768px it is display:flex.
+      // Use the aside locator to avoid matching the mobile ThreadSheet (md:hidden).
+      const aside = page.locator("aside").first();
+      await aside.getByText("Here is an example to start from:").waitFor({ timeout: 30_000 });
+
+      await expect(
+        aside.getByText("Here is an example to start from: workbench 1500 × 700 × 900 mm, 100 kg")
+      ).toBeVisible();
+
+      await expect(aside.getByText(/Describe a frame\. Get a 3D model/)).toBeVisible();
+
+      // At least three example prompt buttons present
+      const exampleButtons = aside.getByRole("button", { name: /bench|shelf/i });
+      expect(await exampleButtons.count()).toBeGreaterThanOrEqual(3);
+    } else {
+      // Mobile: thread column is hidden; the bottom sheet handle shows the entry count.
+      // Verify "1 message" is visible in the sheet handle — confirms the example card
+      // was added to the thread.  (Expanding the sheet and checking inside is brittle
+      // because the content sits in an overflow:hidden container.)
+      await expect(page.getByText("1 message")).toBeVisible({ timeout: 30_000 });
+    }
+
+    // Screenshot
+    await page.waitForTimeout(1000);
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, `first-visit-${vp.name}.png`),
+      fullPage: false,
+    });
+
+    await context.close();
+  }
+});

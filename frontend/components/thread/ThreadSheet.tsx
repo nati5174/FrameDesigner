@@ -3,11 +3,14 @@
 import { useState } from "react";
 import type { FrameSpec, ThreadEntry } from "@/lib/types";
 import { ConversationThread } from "@/components/thread/ConversationThread";
+import { EXAMPLES } from "@/lib/examples";
 
 interface Props {
   entries: ThreadEntry[];
   onRestoreSpec: (spec: FrameSpec) => void;
   onChip: (text: string) => void;
+  isExampleState?: boolean;
+  onExampleSelect?: (prompt: string) => void;
 }
 
 /**
@@ -15,7 +18,7 @@ interface Props {
  * Collapsed: a 48-px handle shows the message count.
  * Expanded: slides up to 70 vh and renders the full thread.
  */
-export function ThreadSheet({ entries, onRestoreSpec, onChip }: Props) {
+export function ThreadSheet({ entries, onRestoreSpec, onChip, isExampleState, onExampleSelect }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   if (entries.length === 0) return null;
@@ -63,6 +66,25 @@ export function ThreadSheet({ entries, onRestoreSpec, onChip }: Props) {
             onRestoreSpec={onRestoreSpec}
             onChip={onChip}
           />
+          {isExampleState && onExampleSelect && (
+            <div className="flex flex-col gap-3 px-4 py-4 border-t border-border">
+              <p className="text-sm text-muted leading-relaxed">
+                Describe a frame. Get a 3D model, cut list, cost and load estimate.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex.prompt}
+                    type="button"
+                    onClick={() => onExampleSelect(ex.prompt)}
+                    className="px-3 py-1.5 rounded-full border border-border bg-surface text-sm text-text hover:border-accent hover:text-accent transition-colors"
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
